@@ -1,4 +1,4 @@
-import { createLightAccountAlchemyClient } from "@alchemy/aa-alchemy";
+import { createMultiOwnerLightAccountAlchemyClient } from "@alchemy/aa-alchemy";
 import { LocalAccountSigner, arbitrumSepolia } from "@alchemy/aa-core";
 import { encodeFunctionData } from "viem";
 import dotenv from "dotenv";
@@ -15,7 +15,7 @@ const PK = `0x${PRIVATE_KEY}`;
 const signer = LocalAccountSigner.privateKeyToAccountSigner(PK);
 
 (async () => {
-  const provider = await createLightAccountAlchemyClient({
+  const provider = await createMultiOwnerLightAccountAlchemyClient({
     apiKey: ALCHEMY_API_KEY,
     chain,
     signer,

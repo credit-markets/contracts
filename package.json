@@ -1,7 +1,10 @@
 {
   "dependencies": {
+    "@account-abstraction/contracts": "^0.7.0",
     "@alchemy/aa-alchemy": "^3.19.0",
     "@alchemy/aa-core": "^3.19.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@types/mocha": "^10.0.7",
     "dotenv": "^16.4.5",
     "hardhat": "^2.22.8"
   },
@@ -13,13 +16,23 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@typechain/ethers-v5": "^11.1.2",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
-    "chai": "^4.2.0",
-    "ethers": "^6.4.0",
+    "@types/node": "^22.4.1",
+    "chai": "^5.1.1",
+    "ethereum-waffle": "^4.0.10",
+    "ethers": "^6.13.2",
+    "hardhat-dependency-compiler": "^1.2.1",
     "hardhat-gas-reporter": "^1.0.8",
     "solidity-coverage": "^0.8.0",
-    "typechain": "^8.3.0"
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.5.4"
   },
-  "type": "module"
+  "scripts": {
+    "typechain": "find artifacts/@account-abstraction/contracts/core -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 find artifacts/contracts/SimplePaymaster.sol -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 typechain --target ethers-v5 --out-dir typechain --show-stack-traces"
+  }
 }
