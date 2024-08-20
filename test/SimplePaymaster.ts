@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { DefaultsForUserOp } from "./UserOp.js";
+import { DefaultsForUserOp } from "./UserOp.ts";
 import { Contract, Signer, ContractFactory } from "ethers";
 import { EntryPoint, SimplePaymaster } from "../typechain";
 
