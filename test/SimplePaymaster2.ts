@@ -149,32 +149,32 @@ describe("Paymaster Test Suite", function () {
   }
 
 
-  // it("Should increment using smart account and paymaster", async function () {
-  //   const initialNumber = await simpleIncrementer.getNumber();
+  it("Should increment using smart account and paymaster", async function () {
+    const initialNumber = await simpleIncrementer.getNumber();
 
-  //   const userOp = await createUserOp(
-  //     await userSmartAccount.getAddress(),
-  //     await entryPoint.getNonce(await userSmartAccount.getAddress(), 0),
-  //     initCode,
-  //     userSmartAccount.interface.encodeFunctionData("execute", [
-  //       await simpleIncrementer.getAddress(),
-  //       0,
-  //       simpleIncrementer.interface.encodeFunctionData("increment"),
-  //     ]),
-  //     paymaster
-  //   );
+    const userOp = await createUserOp(
+      await userSmartAccount.getAddress(),
+      await entryPoint.getNonce(await userSmartAccount.getAddress(), 0),
+      initCode,
+      userSmartAccount.interface.encodeFunctionData("execute", [
+        await simpleIncrementer.getAddress(),
+        0,
+        simpleIncrementer.interface.encodeFunctionData("increment"),
+      ]),
+      paymaster
+    );
 
-  //   // Sign the user operation
-  //   const userOpHash = await entryPoint.getUserOpHash(userOp);
-  //   userOp.signature = await owner.signMessage(ethers.getBytes(userOpHash));
+    // Sign the user operation
+    const userOpHash = await entryPoint.getUserOpHash(userOp);
+    userOp.signature = await owner.signMessage(ethers.getBytes(userOpHash));
 
-  //   // Execute the user operation
-  //   await entryPoint.handleOps([userOp], await owner.getAddress());
+    // Execute the user operation
+    await entryPoint.handleOps([userOp], await owner.getAddress());
 
-  //   // Check if the number was incremented
-  //   const newNumber = await simpleIncrementer.getNumber();
-  //   expect(newNumber).to.equal(initialNumber + 1n);
-  // });
+    // Check if the number was incremented
+    const newNumber = await simpleIncrementer.getNumber();
+    expect(newNumber).to.equal(initialNumber + 1n);
+  });
 
   // it.only("Should fail to increment if paymaster has insufficient funds", async function () {
   //   // Get the paymaster's initial balance
