@@ -21,13 +21,13 @@ describe("SimplePaymaster", function () {
     const EntryPointFactory = await ethers.getContractFactory("EntryPoint");
     const deploymentEntrypoint = await EntryPointFactory.deploy();
     entryPoint = await deploymentEntrypoint.deployed(); // Ensure the contract is fully deployed
-    entryPointAddress = await entryPoint.getAddress();
+    entryPointAddress = await deploymentEntrypoint.getAddress();
 
     // Deploy the SimplePaymaster contract linked to the EntryPoint
     const Paymaster = await ethers.getContractFactory("SimplePaymaster");
     const paymasterDeployment = await Paymaster.deploy(entryPointAddress);
     paymaster = await paymasterDeployment.deployed(); // Ensure the contract is fully deployed
-    paymasterAddress = await paymaster.getAddress();
+    paymasterAddress = await deploymentEntrypoint.getAddress();
   });
 
   it("Should deploy EntryPoint and SimplePaymaster correctly", async function () {
