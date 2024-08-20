@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { DefaultsForUserOp } from "./UserOp.ts";
-import { Contract, Signer, ContractFactory } from "ethers";
+import { DefaultsForUserOp } from "./UserOp";
+import { Signer, zeroPadValue, toBeHex } from "ethers";
 import { EntryPoint, SimplePaymaster } from "../typechain";
 
 describe("SimplePaymaster", function () {
@@ -12,22 +12,25 @@ describe("SimplePaymaster", function () {
     addr2: Signer,
     entryPointAddress: string,
     paymasterAddress: string;
-  const provider = ethers.provider;
 
   beforeEach(async function () {
-    [owner, addr1, addr2] = await ethers.getSigners();
+    try {
+      [owner, addr1, addr2] = await ethers.getSigners();
 
-    // Deploy the EntryPoint contract from the account-abstraction package
-    const EntryPointFactory = await ethers.getContractFactory("EntryPoint");
-    const deploymentEntrypoint = await EntryPointFactory.deploy();
-    entryPoint = await deploymentEntrypoint.deployed(); // Ensure the contract is fully deployed
-    entryPointAddress = await deploymentEntrypoint.getAddress();
+      // Deploy the EntryPoint contract
+      const EntryPointFactory = await ethers.getContractFactory("EntryPoint");
+      const deploymentEntrypoint = await EntryPointFactory.deploy();
+      entryPoint = (await deploymentEntrypoint.waitForDeployment()) as any;
+      entryPointAddress = await deploymentEntrypoint.getAddress();
 
-    // Deploy the SimplePaymaster contract linked to the EntryPoint
-    const Paymaster = await ethers.getContractFactory("SimplePaymaster");
-    const paymasterDeployment = await Paymaster.deploy(entryPointAddress);
-    paymaster = await paymasterDeployment.deployed(); // Ensure the contract is fully deployed
-    paymasterAddress = await deploymentEntrypoint.getAddress();
+      // Deploy the SimplePaymaster contract
+      const Paymaster = await ethers.getContractFactory("SimplePaymaster");
+      const paymasterDeployment = await Paymaster.deploy(entryPointAddress);
+      paymaster = (await paymasterDeployment.waitForDeployment()) as any;
+      paymasterAddress = await paymaster.getAddress();
+    } catch (error) {
+      console.error("Error in beforeEach:", error);
+    }
   });
 
   it("Should deploy EntryPoint and SimplePaymaster correctly", async function () {
@@ -57,10 +60,12 @@ describe("SimplePaymaster", function () {
     // Dummy UserOperation and context for testing _validatePaymasterUserOp
     const abiCoder = new ethers.AbiCoder();
 
-    const verificationGasLimit =
-      BigInt(DefaultsForUserOp.verificationGasLimit) + BigInt(21000);
-    const callGasLimit =
-      BigInt(DefaultsForUserOp.preVerificationGas) + BigInt(21000);
+    const verificationGasLimit = String(
+      BigInt(DefaultsForUserOp.verificationGasLimit) + BigInt(21000)
+    );
+    const callGasLimit = String(
+      BigInt(DefaultsForUserOp.preVerificationGas) + BigInt(21000)
+    );
 
     const userOp = {
       sender: await addr1.getAddress(),
@@ -71,14 +76,15 @@ describe("SimplePaymaster", function () {
       //   ethers.utils.hexZeroPad(ethers.hexlify(verificationGasLimit), 16),
       //   ethers.hexZeroPad(ethers.hexlify(callGasLimit), 16),
       // ]),
-      accountGasLimits: ethers.hexlify("21000000"),
+      accountGasLimits: ethers.concat([
+        zeroPadValue(toBeHex(verificationGasLimit), 16),
+        zeroPadValue(toBeHex(callGasLimit), 16),
+      ]),
       preVerificationGas: 21000,
-      gasFees: ethers.hexlify(
-        abiCoder.encode(
-          ["uint192", "uint64"],
-          [ethers.parseUnits("10", "gwei"), ethers.parseUnits("1", "gwei")]
-        )
-      ),
+      gasFees: ethers.concat([
+        zeroPadValue(toBeHex(DefaultsForUserOp.maxPriorityFeePerGas), 16),
+        zeroPadValue(toBeHex(DefaultsForUserOp.maxFeePerGas), 16),
+      ]),
       paymasterAndData: "0x",
       signature: "0x",
     };
@@ -91,11 +97,12 @@ describe("SimplePaymaster", function () {
     );
 
     const maxCost = ethers.parseEther("0.1");
-    const context = await paymaster.validatePaymasterUserOp(
+    const context: any = await paymaster.validatePaymasterUserOp(
       userOp,
       requestId,
       maxCost
     );
+
     expect(context[0]).to.equal(""); // Assuming the context is empty
   });
 

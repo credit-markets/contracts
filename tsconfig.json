@@ -1,14 +1,25 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "ES2017",
     "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDirs": [
+      "./src",
+      "./scripts",
+      "./test"
+    ],
   },
-  "include": ["./src/**/*.ts", "./hardhat.config.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "./src/**/*.ts",
+    "./test/**/*.ts",
+    "./scripts/**/*.ts",
+    "./hardhat.config.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
