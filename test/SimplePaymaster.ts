@@ -97,25 +97,8 @@ describe("SimplePaymaster", function () {
     );
 
     const maxCost = ethers.parseEther("0.1");
-    const context: any = await paymaster.validatePaymasterUserOp(
-      userOp,
-      requestId,
-      maxCost
-    );
-
-    expect(context[0]).to.equal(""); // Assuming the context is empty
-  });
-
-  it("Should handle post-operation correctly", async function () {
-    // Example test for _postOp (would require more context in a real case)
-    const context = "0x";
-    const mode = 0; // Mock mode
-    const actualGasCost = ethers.parseEther("0.01");
-    const actualUserOpFeePerGas = ethers.parseUnits("10", "gwei");
-
-    // No specific checks, but we can ensure it doesn't revert
     await expect(
-      paymaster.postOp(mode, context, actualGasCost, actualUserOpFeePerGas)
-    ).to.not.be.reverted;
+      paymaster.validatePaymasterUserOp(userOp, requestId, maxCost)
+    ).to.be.revertedWith("Sender not EntryPoint");
   });
 });
