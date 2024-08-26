@@ -85,7 +85,7 @@ describe("SimplePaymaster", function () {
     simpleIncrementerAddress = await simpleIncrementer.getAddress();
 
     // Add funds to the Paymaster
-    const amount = ethers.parseEther("1.0");
+    const amount = ethers.parseEther("10.0");
     await paymaster.deposit({ value: amount });
   });
 
@@ -239,7 +239,6 @@ describe("SimplePaymaster", function () {
 
     // valid expiratation date (validAfter, validUntil)
     const timeRange = abiCoder.encode(["uint48", "uint48"], [now, now + 60]);
-
     const { userSmartAccount, sender, initCode } = await getSmartAccount(
       multiOwnerAccountFactory,
       signerAddress,
@@ -247,7 +246,6 @@ describe("SimplePaymaster", function () {
       entryPoint,
       true
     );
-
     const userOp = await createUserOp({
       sender,
       nonce: await entryPoint.getNonce(await userSmartAccount.getAddress(), 0),
@@ -260,9 +258,9 @@ describe("SimplePaymaster", function () {
       paymasterAddress,
       paymasterData: timeRange,
     });
-
     const userOpHash = await entryPoint.getUserOpHash(userOp);
     userOp.signature = await signer.signMessage(ethers.getBytes(userOpHash));
+    userOp.signature = ethers.concat(["0x00", userOp.signature]); // 0x00 for EOA signature
 
     // await entryPoint.handleOps([userOp], signerAddress, { gasLimit });
     // Execute the user operation
