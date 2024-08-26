@@ -13,12 +13,14 @@ function packPaymasterData(
   postOpGasLimit: bigint,
   paymasterData: string
 ): string {
-  return ethers.concat([
-    paymaster,
-    ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
-    ethers.zeroPadValue(ethers.toBeHex(postOpGasLimit), 16),
-    paymasterData,
-  ]);
+  return paymaster == "0x" && paymasterData == "0x"
+    ? "0x"
+    : ethers.concat([
+        paymaster,
+        ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
+        ethers.zeroPadValue(ethers.toBeHex(postOpGasLimit), 16),
+        paymasterData,
+      ]);
 }
 
 type CreateUserOpParams = {
