@@ -202,8 +202,10 @@ describe("TokenPaymaster", function () {
       ]),
       paymasterAddress: tokenPaymasterAddress,
       paymasterPostOpGasLimit: 600000n,
-      paymasterData: "0x",
+      isTokenPaymaster: true,
+      tokenPaymasterData: 100000n,
     });
+    console.log(userOp);
 
     const userOpHash = await entryPoint.getUserOpHash(userOp);
 

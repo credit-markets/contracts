@@ -36,7 +36,9 @@ function packTokenPaymasterData(
         paymaster,
         ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
         ethers.zeroPadValue(ethers.toBeHex(postOpGasLimit), 16),
-        ethers.zeroPadValue(ethers.toBeHex(paymasterData), 32),
+        paymasterData == 0n
+          ? "0x"
+          : ethers.zeroPadValue(ethers.toBeHex(paymasterData), 32),
       ]);
 }
 
