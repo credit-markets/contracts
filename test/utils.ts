@@ -23,6 +23,23 @@ function packPaymasterData(
       ]);
 }
 
+// Pack PaymasterData
+function packTokenPaymasterData(
+  paymaster: string,
+  paymasterVerificationGasLimit: bigint,
+  postOpGasLimit: bigint,
+  paymasterData: bigint
+): string {
+  return paymaster == "0x"
+    ? "0x"
+    : ethers.concat([
+        paymaster,
+        ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
+        ethers.zeroPadValue(ethers.toBeHex(postOpGasLimit), 16),
+        ethers.zeroPadValue(ethers.toBeHex(paymasterData), 32),
+      ]);
+}
+
 type CreateUserOpParams = {
   sender: string;
   nonce: number;
@@ -30,8 +47,10 @@ type CreateUserOpParams = {
   callData: string;
   paymasterAddress: string;
   paymasterData?: string;
+  tokenPaymasterData?: bigint;
   paymasterVerificationGasLimit?: bigint;
   paymasterPostOpGasLimit?: bigint;
+  isTokenPaymaster?: boolean; // Add the 'isTokenPaymaster' property
 };
 
 // Create UserOp
@@ -42,9 +61,39 @@ export async function createUserOp({
   callData,
   paymasterAddress,
   paymasterData = "0x",
+  tokenPaymasterData = 0n,
   paymasterVerificationGasLimit = 500000n,
   paymasterPostOpGasLimit = 100000n,
+  isTokenPaymaster = false,
 }: CreateUserOpParams) {
+  if (isTokenPaymaster) {
+    const userOp = {
+      sender,
+      nonce,
+      initCode,
+      callData,
+      accountGasLimits: ethers.concat([
+        ethers.zeroPadValue(ethers.toBeHex(500_000), 16),
+        ethers.zeroPadValue(ethers.toBeHex(200_000), 16),
+      ]),
+      preVerificationGas: 500_000,
+      gasFees: ethers.concat([
+        ethers.zeroPadValue(ethers.toBeHex(ethers.parseUnits("5", "gwei")), 16),
+        ethers.zeroPadValue(
+          ethers.toBeHex(ethers.parseUnits("10", "gwei")),
+          16
+        ),
+      ]),
+      paymasterAndData: packTokenPaymasterData(
+        paymasterAddress,
+        paymasterVerificationGasLimit,
+        paymasterPostOpGasLimit,
+        tokenPaymasterData
+      ),
+      signature: "0x",
+    };
+    return userOp;
+  }
   const userOp = {
     sender,
     nonce,
