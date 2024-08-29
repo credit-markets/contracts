@@ -107,7 +107,7 @@ describe("TokenPaymaster", function () {
     // TokenPaymaster configs
     const tokenPaymasterConfig: TokenPaymaster.TokenPaymasterConfigStruct = {
       priceMaxAge: 86400,
-      refundPostopCost: 40000,
+      refundPostopCost: 50000,
       minEntryPointBalance,
       priceMarkup: (priceDenominator * 15n) / 10n,
     };
@@ -201,8 +201,8 @@ describe("TokenPaymaster", function () {
         simpleIncrementer.interface.encodeFunctionData("increment"),
       ]),
       paymasterAddress: tokenPaymasterAddress,
-      paymasterPostOpGasLimit: BigInt(config.refundPostopCost),
-      paymasterData: timeRange,
+      paymasterPostOpGasLimit: 600000n,
+      paymasterData: "0x",
     });
 
     const userOpHash = await entryPoint.getUserOpHash(userOp);
@@ -210,6 +210,14 @@ describe("TokenPaymaster", function () {
     let signature = await signer.signMessage(ethers.getBytes(userOpHash));
 
     userOp.signature = ethers.concat(["0x00", signature]);
+
+    await token.transfer(smartAccountAddress, 276250000000000000n);
+
+    await token.sudoApprove(
+      smartAccountAddress,
+      tokenPaymasterAddress,
+      ethers.MaxUint256
+    );
 
     await entryPoint.handleOps([userOp], signerAddress);
   });
