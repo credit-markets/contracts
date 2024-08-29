@@ -5,7 +5,6 @@ import { network } from "hardhat";
 import {
   EntryPoint,
   MultiOwnerLightAccountFactory,
-  Paymaster,
   MultiOwnerLightAccount,
   SimpleIncrementer,
 } from "../typechain";
@@ -24,9 +23,7 @@ describe("SimplePaymaster", function () {
     simpleIncrementerAddress: string,
     now: number;
 
-  beforeEach(async function () {
-    this.timeout(20000);
-
+  before(async function () {
     [signer, addr1] = await ethers.getSigners();
     signerAddress = await signer.getAddress();
     now = (await ethers.provider

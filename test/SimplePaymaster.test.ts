@@ -28,8 +28,6 @@ describe("SimplePaymaster", function () {
     now: number;
 
   beforeEach(async function () {
-    this.timeout(20000);
-
     [signer, addr1] = await ethers.getSigners();
     signerAddress = await signer.getAddress();
     now = (await ethers.provider
