@@ -203,9 +203,8 @@ describe("TokenPaymaster", function () {
       paymasterAddress: tokenPaymasterAddress,
       paymasterPostOpGasLimit: 600000n,
       isTokenPaymaster: true,
-      tokenPaymasterData: 100000n,
+      tokenPaymasterData: 500000n,
     });
-    console.log(userOp);
 
     const userOpHash = await entryPoint.getUserOpHash(userOp);
 
@@ -213,7 +212,10 @@ describe("TokenPaymaster", function () {
 
     userOp.signature = ethers.concat(["0x00", signature]);
 
-    await token.transfer(smartAccountAddress, 276250000000000000n);
+    await token.transfer(
+      smartAccountAddress,
+      4700000000000000000000000000000000000n
+    );
 
     await token.sudoApprove(
       smartAccountAddress,

@@ -11,7 +11,7 @@ contract TestERC20 is ERC20 {
         string memory _symbol,
         uint8 _decimals
     ) ERC20(_name, _symbol) {
-        _mint(msg.sender, 1000000000000000000000000);
+        _mint(msg.sender, 9000000000000000000000000000000000000);
         __decimals = _decimals;
     }
 

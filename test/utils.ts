@@ -5,9 +5,10 @@ import {
   EntryPoint,
   MultiOwnerLightAccountFactory,
 } from "../typechain";
+import { concat } from "ethers";
 
 // Pack PaymasterData
-function packPaymasterData(
+export function packPaymasterData(
   paymaster: string,
   paymasterVerificationGasLimit: bigint,
   postOpGasLimit: bigint,
@@ -164,4 +165,8 @@ export async function getSmartAccount(
   const userSmartAccountAddress: string = await userSmartAccount.getAddress();
 
   return { userSmartAccount, userSmartAccountAddress, sender, initCode };
+}
+
+export function hexConcat(values: (string | number)[]) {
+  return concat(values.map((v) => (typeof v === "string" ? v : v.toString())));
 }
