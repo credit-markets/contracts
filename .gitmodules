@@ -1,0 +1,6 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/light-account"]
+	path = lib/light-account
+	url = https://github.com/alchemyplatform/light-account
