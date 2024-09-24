@@ -36,3 +36,11 @@ export const DefaultsForUserOp: UserOp = {
   paymasterPostOpGasLimit: 0,
   signature: "0x",
 };
+
+// export function getUserOpHash (op: UserOperationany, entryPoint: string, chainId: number): string {
+//   const userOpHash = keccak256(encodeUserOp(op, true))
+//   const enc = defaultAbiCoder.encode(
+//     ['bytes32', 'address', 'uint256'],
+//     [userOpHash, entryPoint, chainId])
+//   return keccak256(enc)
+// }

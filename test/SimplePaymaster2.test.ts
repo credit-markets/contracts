@@ -7,7 +7,7 @@ import {
   SimplePaymaster,
   SimpleAccountFactory,
   SimpleAccount,
-  SimpleIncrementer
+  SimpleIncrementer,
 } from "../typechain";
 
 describe("Paymaster Test Suite", function () {
@@ -17,8 +17,8 @@ describe("Paymaster Test Suite", function () {
   let simpleIncrementer: SimpleIncrementer;
   let owner: Signer;
   let userSmartAccount: SimpleAccount;
-  let sender;
-  let initCode;
+  let sender: string;
+  let initCode: string;
 
   async function deployFixture() {
     [owner] = await ethers.getSigners();
@@ -27,32 +27,47 @@ describe("Paymaster Test Suite", function () {
 
     // Deploy EntryPoint
     const EntryPointFactory = await ethers.getContractFactory("EntryPoint");
-    entryPoint = await EntryPointFactory.deploy() as unknown as EntryPoint;
+    entryPoint = (await EntryPointFactory.deploy()) as unknown as EntryPoint;
     console.log("EntryPoint deployed to:", await entryPoint.getAddress());
 
     // Deploy SimplePaymaster
     const PaymasterFactory = await ethers.getContractFactory("SimplePaymaster");
-    paymaster = await PaymasterFactory.deploy(await entryPoint.getAddress()) as unknown as SimplePaymaster;
+    paymaster = (await PaymasterFactory.deploy(
+      await entryPoint.getAddress()
+    )) as unknown as SimplePaymaster;
     console.log("SimplePaymaster deployed to:", await paymaster.getAddress());
 
     // Deploy SimpleAccountFactory
-    const AccountFactoryFactory = await ethers.getContractFactory("SimpleAccountFactory");
-    accountFactory = await AccountFactoryFactory.deploy(await entryPoint.getAddress()) as unknown as SimpleAccountFactory;
-    console.log("SimpleAccountFactory deployed to:", await accountFactory.getAddress());
+    const AccountFactoryFactory = await ethers.getContractFactory(
+      "SimpleAccountFactory"
+    );
+    accountFactory = (await AccountFactoryFactory.deploy(
+      await entryPoint.getAddress()
+    )) as unknown as SimpleAccountFactory;
+    console.log(
+      "SimpleAccountFactory deployed to:",
+      await accountFactory.getAddress()
+    );
 
     // Deploy SimpleIncrementer
-    const SimpleIncrementerFactory = await ethers.getContractFactory("SimpleIncrementer");
-    simpleIncrementer = await SimpleIncrementerFactory.deploy() as unknown as SimpleIncrementer;
-    console.log("SimpleIncrementer deployed to:", await simpleIncrementer.getAddress());
+    const SimpleIncrementerFactory = await ethers.getContractFactory(
+      "SimpleIncrementer"
+    );
+    simpleIncrementer =
+      (await SimpleIncrementerFactory.deploy()) as unknown as SimpleIncrementer;
+    console.log(
+      "SimpleIncrementer deployed to:",
+      await simpleIncrementer.getAddress()
+    );
 
     // Calculate sender address (smart account address)
     const userAddress = await owner.getAddress();
     const factoryAddress = await accountFactory.getAddress();
-    const initCodeFunction = accountFactory.interface.encodeFunctionData("createAccount", [userAddress, 0]);
-    initCode = ethers.concat([
-      factoryAddress,
-      initCodeFunction
-    ]);
+    const initCodeFunction = accountFactory.interface.encodeFunctionData(
+      "createAccount",
+      [userAddress, 0]
+    );
+    initCode = ethers.concat([factoryAddress, initCodeFunction]);
 
     try {
       await entryPoint.getSenderAddress(initCode);
@@ -66,26 +81,54 @@ describe("Paymaster Test Suite", function () {
     }
     console.log({ sender, initCode });
 
-    userSmartAccount = await ethers.getContractAt("SimpleAccount", sender) as unknown as SimpleAccount;
-    console.log("UserSmartAccount address:", await userSmartAccount.getAddress());
+    userSmartAccount = (await ethers.getContractAt(
+      "SimpleAccount",
+      sender
+    )) as unknown as SimpleAccount;
+    console.log(
+      "UserSmartAccount address:",
+      await userSmartAccount.getAddress()
+    );
 
     // Fund the paymaster
     console.log("Funding paymaster...");
     const depositAmount = ethers.parseEther("2.0"); // Adjust this amount based on your needs
-    await entryPoint.depositTo(await paymaster.getAddress(), { value: depositAmount });
+    await entryPoint.depositTo(await paymaster.getAddress(), {
+      value: depositAmount,
+    });
 
     console.log("Paymaster funded");
 
     // Verify paymaster balance
-    const paymasterBalance = await ethers.provider.getBalance(await paymaster.getAddress());
+    const paymasterBalance = await ethers.provider.getBalance(
+      await paymaster.getAddress()
+    );
     console.log("Paymaster balance:", ethers.formatEther(paymasterBalance));
 
-    return { entryPoint, paymaster, accountFactory, simpleIncrementer, owner, userSmartAccount, sender, initCode };
+    return {
+      entryPoint,
+      paymaster,
+      accountFactory,
+      simpleIncrementer,
+      owner,
+      userSmartAccount,
+      sender,
+      initCode,
+    };
   }
 
   beforeEach(async function () {
     console.log("Running beforeEach hook...");
-    ({ entryPoint, paymaster, accountFactory, simpleIncrementer, owner, userSmartAccount, sender, initCode } = await loadFixture(deployFixture));
+    ({
+      entryPoint,
+      paymaster,
+      accountFactory,
+      simpleIncrementer,
+      owner,
+      userSmartAccount,
+      sender,
+      initCode,
+    } = await loadFixture(deployFixture));
     console.log("beforeEach hook completed");
   });
 
@@ -107,7 +150,7 @@ describe("Paymaster Test Suite", function () {
       paymaster,
       ethers.zeroPadValue(ethers.toBeHex(paymasterVerificationGasLimit), 16),
       ethers.zeroPadValue(ethers.toBeHex(postOpGasLimit), 16),
-      paymasterData
+      paymasterData,
     ]);
   }
 
@@ -129,12 +172,15 @@ describe("Paymaster Test Suite", function () {
       callData,
       accountGasLimits: ethers.concat([
         ethers.zeroPadValue(ethers.toBeHex(500_000), 16),
-        ethers.zeroPadValue(ethers.toBeHex(200000), 16)
+        ethers.zeroPadValue(ethers.toBeHex(200000), 16),
       ]),
       preVerificationGas: 100_000,
       gasFees: ethers.concat([
         ethers.zeroPadValue(ethers.toBeHex(ethers.parseUnits("5", "gwei")), 16),
-        ethers.zeroPadValue(ethers.toBeHex(ethers.parseUnits("10", "gwei")), 16)
+        ethers.zeroPadValue(
+          ethers.toBeHex(ethers.parseUnits("10", "gwei")),
+          16
+        ),
       ]),
       paymasterAndData: packPaymasterData(
         await paymaster.getAddress(),
@@ -142,12 +188,11 @@ describe("Paymaster Test Suite", function () {
         paymasterPostOpGasLimit,
         paymasterData
       ),
-      signature: "0x"
+      signature: "0x",
     };
 
     return userOp;
   }
-
 
   it("Should increment using smart account and paymaster", async function () {
     const initialNumber = await simpleIncrementer.getNumber();
