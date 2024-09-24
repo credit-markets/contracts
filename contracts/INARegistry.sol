@@ -1,58 +1,163 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract Registry {
-    // Event emitted when a new factory is added to the registry
-    event FactoryAdded(address indexed factoryAddress);
+import "./InaAccountFactory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
-    // Event emitted when a factory is removed from the registry
-    event FactoryRemoved(address indexed factoryAddress);
-
-    // Event emitted when multiple tokens are added to the token list
-    event TokenAdded(address[] tokenAddresses);
-
-    // Event emitted when multiple tokens are removed from the token list
-    event TokenRemoved(address[] tokenAddresses);
-
-    // Event emitted when products are added to the platform
+/**
+ * @title Registry
+ * @dev This contract manages factories, tokens, and products for the INA Protocol.
+ *
+ * @notice This contract emits events for adding and removing factories, tokens, and products.
+ * It does not store these entities on-chain, relying instead on event emissions for off-chain tracking.
+ *
+ * ██╗███╗   ██╗ █████╗     ██████╗ ███████╗ ██████╗ ██╗███████╗████████╗██████╗ ██╗   ██╗
+ * ██║████╗  ██║██╔══██╗    ██╔══██╗██╔════╝██╔════╝ ██║██╔════╝╚══██╔══╝██╔══██╗╚██╗ ██╔╝
+ * ██║██╔██╗ ██║███████║    ██████╔╝█████╗  ██║  ███╗██║███████╗   ██║   ██████╔╝ ╚████╔╝
+ * ██║██║╚██╗██║██╔══██║    ██╔══██╗██╔══╝  ██║   ██║██║╚════██║   ██║   ██╔══██╗  ╚██╔╝
+ * ██║██║ ╚████║██║  ██║    ██║  ██║███████╗╚██████╔╝██║███████║   ██║   ██║  ██║   ██║
+ * ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝   ╚═╝
+ */
+contract Registry is Ownable, Pausable {
+    // Events
+    event FactoryAdded(InaAccountFactory indexed factoryAddress);
+    event FactoryRemoved(InaAccountFactory indexed factoryAddress);
+    event TokenAdded(IERC20[] tokenAddresses, address[] priceFeedAddresses);
+    event TokenRemoved(IERC20[] tokenAddresses);
     event ProductAdded(address[] productAddresses);
-
-    // Event emitted when products are removed from the platform
     event ProductRemoved(address[] productAddresses);
 
-    // Function to add a factory to the registry (emit only event)
-    function addFactory(address factoryAddress) external {
-        require(factoryAddress != address(0), "Factory address cannot be zero");
+    // Constants
+    uint256 public constant VERSION = 1;
+    uint256 public constant MAX_BATCH_SIZE = 100;
+
+    constructor() Ownable(_msgSender()) {}
+
+    /**
+     * @dev Adds a new factory to the registry.
+     * @param factoryAddress The address of the factory to add.
+     * @notice This function only emits an event and does not store the factory address on-chain.
+     */
+    function addFactory(
+        InaAccountFactory factoryAddress
+    ) external onlyOwner whenNotPaused {
+        require(
+            address(factoryAddress) != address(0),
+            "Factory address cannot be zero"
+        );
         emit FactoryAdded(factoryAddress);
     }
 
-    // Function to remove a factory from the registry (emit only event)
-    function removeFactory(address factoryAddress) external {
-        require(factoryAddress != address(0), "Factory address cannot be zero");
+    /**
+     * @dev Removes a factory from the registry.
+     * @param factoryAddress The address of the factory to remove.
+     * @notice This function only emits an event and does not remove any on-chain data.
+     */
+    function removeFactory(
+        InaAccountFactory factoryAddress
+    ) external onlyOwner whenNotPaused {
+        require(
+            address(factoryAddress) != address(0),
+            "Factory address cannot be zero"
+        );
         emit FactoryRemoved(factoryAddress);
     }
 
-    // Function to add multiple tokens to the token list (emit only event)
-    function addToken(address[] memory tokenAddresses) external {
-        require(tokenAddresses.length > 0, "Token address array is empty");
-        emit TokenAdded(tokenAddresses);
+    /**
+     * @dev Adds multiple tokens and their corresponding price feed addresses to the registry.
+     * @param tokenAddresses An array of token addresses to add.
+     * @param priceFeedAddresses An array of price feed addresses corresponding to the tokens.
+     * @notice This function emits an event with both token and price feed addresses.
+     */
+    function addToken(
+        IERC20[] memory tokenAddresses,
+        address[] memory priceFeedAddresses
+    ) external onlyOwner whenNotPaused {
+        require(
+            tokenAddresses.length > 0 &&
+                tokenAddresses.length <= MAX_BATCH_SIZE,
+            "Invalid token array length"
+        );
+        require(
+            tokenAddresses.length == priceFeedAddresses.length,
+            "Array lengths must match"
+        );
+        for (uint i = 0; i < tokenAddresses.length; i++) {
+            require(
+                address(tokenAddresses[i]) != address(0),
+                "Invalid token address"
+            );
+            require(
+                priceFeedAddresses[i] != address(0),
+                "Invalid price feed address"
+            );
+        }
+        emit TokenAdded(tokenAddresses, priceFeedAddresses);
     }
 
-    // Function to remove multiple tokens from the token list (emit only event)
-    function removeToken(address[] memory tokenAddresses) external {
-        require(tokenAddresses.length > 0, "Token address array is empty");
+    /**
+     * @dev Removes multiple tokens from the registry.
+     * @param tokenAddresses An array of token addresses to remove.
+     * @notice This function only emits an event and does not remove any on-chain data.
+     */
+    function removeToken(
+        IERC20[] memory tokenAddresses
+    ) external onlyOwner whenNotPaused {
+        require(
+            tokenAddresses.length > 0 &&
+                tokenAddresses.length <= MAX_BATCH_SIZE,
+            "Invalid token array length"
+        );
         emit TokenRemoved(tokenAddresses);
     }
 
-    // Function to add products to the platform (emit only event)
-    function addProduct(address[] memory productAddresses) external {
-        require(productAddresses.length > 0, "Product address array is empty");
+    /**
+     * @dev Adds multiple products to the registry.
+     * @param productAddresses An array of product addresses to add.
+     * @notice This function only emits an event and does not store the product addresses on-chain.
+     */
+    function addProduct(
+        address[] memory productAddresses
+    ) external onlyOwner whenNotPaused {
+        require(
+            productAddresses.length > 0 &&
+                productAddresses.length <= MAX_BATCH_SIZE,
+            "Invalid product array length"
+        );
         emit ProductAdded(productAddresses);
     }
 
-    // Function to remove products from the platform (emit only event)
-    function removeProduct(address[] memory productAddresses) external {
-        require(productAddresses.length > 0, "Product address array is empty");
+    /**
+     * @dev Removes multiple products from the registry.
+     * @param productAddresses An array of product addresses to remove.
+     * @notice This function only emits an event and does not remove any on-chain data.
+     */
+    function removeProduct(
+        address[] memory productAddresses
+    ) external onlyOwner whenNotPaused {
+        require(
+            productAddresses.length > 0 &&
+                productAddresses.length <= MAX_BATCH_SIZE,
+            "Invalid product array length"
+        );
         emit ProductRemoved(productAddresses);
+    }
+
+    /**
+     * @dev Pauses the contract, preventing certain operations from being executed.
+     * @notice This function can only be called by the contract owner.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract, allowing normal operation to resume.
+     * @notice This function can only be called by the contract owner.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
