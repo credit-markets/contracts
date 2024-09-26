@@ -3,11 +3,9 @@ pragma solidity ^0.8.0;
 
 // Import OpenZeppelin Contracts
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Attestation, IEAS} from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
+import "./interfaces/IINARegistry.sol";
 
 /**
  * @title InaPool
@@ -43,7 +41,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 feeBasisPoints,
         uint256 estimatedReturnBasisPoints,
         address indexed creditFacilitator,
-        address indexed inaAdmWallet,
         address easContract,
         uint256 kycLevel,
         uint256 term
@@ -84,10 +81,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
     // Addresses
     IERC20 private immutable _asset;
     address public immutable creditFacilitator;
-    address public immutable inaAdmWallet;
-
-    // EAS contract instance
-    IEAS public immutable eas;
+    IINARegistry public immutable inaRegistry;
 
     // Investment tracking
     mapping(address => uint256) public investments;
@@ -114,7 +108,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 feeBasisPoints;
         uint256 estimatedReturnBasisPoints;
         address creditFacilitator;
-        address inaAdmWallet;
         address easContract;
         uint256 kycLevel;
         uint256 term;
@@ -128,6 +121,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
      * @param pool Struct containing all other constructor parameters.
      */
     constructor(
+        IINARegistry inaRegistry_,
         IERC20 asset_,
         string memory name_,
         string memory symbol_,
@@ -142,13 +136,14 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
             "Invalid credit facilitator"
         );
         require(
-            pool.inaAdmWallet != address(0),
-            "Invalid InaAdmWallet address"
+            address(inaRegistry_) != address(0),
+            "Invalid inaRegistry address"
         );
         require(pool.easContract != address(0), "Invalid EAS contract address");
         require(pool.term > 0, "Term must be greater than zero");
 
         _asset = asset_;
+        inaRegistry = inaRegistry_;
         startTime = pool.startTime;
         endTime = pool.endTime;
         threshold = pool.threshold;
@@ -156,8 +151,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         feeBasisPoints = pool.feeBasisPoints;
         estimatedReturnBasisPoints = pool.estimatedReturnBasisPoints;
         creditFacilitator = pool.creditFacilitator;
-        inaAdmWallet = pool.inaAdmWallet;
-        eas = IEAS(pool.easContract);
         kycLevel = pool.kycLevel;
         term = pool.term;
 
@@ -177,7 +170,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
             pool.feeBasisPoints,
             pool.estimatedReturnBasisPoints,
             pool.creditFacilitator,
-            pool.inaAdmWallet,
             pool.easContract,
             pool.kycLevel,
             pool.term
@@ -222,18 +214,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
     ) public view returns (uint256 shares) {
         uint256 supply = totalSupply();
         return supply == 0 ? assets : (assets * supply) / totalAssets();
-    }
-
-    /**
-     * @dev Converts a given amount of shares to assets.
-     * @param shares The amount of shares.
-     * @return assets The equivalent amount of assets.
-     */
-    function convertToAssets(
-        uint256 shares
-    ) public view returns (uint256 assets) {
-        uint256 supply = totalSupply();
-        return supply == 0 ? shares : (shares * totalAssets()) / supply;
     }
 
     /**
@@ -353,7 +333,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 facilitatorAmount = totalFunds - feeAmount;
 
         // Transfer fee to InaAdmWallet
-        _asset.transfer(inaAdmWallet, feeAmount);
+        _asset.transfer(inaRegistry.feeReceiver(), feeAmount);
 
         // Transfer remaining funds to credit facilitator
         _asset.transfer(creditFacilitator, facilitatorAmount);
@@ -422,9 +402,15 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
      * @param attestationUID UID of the attestation.
      */
     function _verifyAttestation(bytes32 attestationUID) internal view {
-        Attestation memory attestation = eas.getAttestation(attestationUID);
+        Attestation memory attestation = IEAS(inaRegistry.eas()).getAttestation(
+            attestationUID
+        );
         require(
-            attestation.recipient == inaAdmWallet,
+            attestation.attester == address(inaRegistry),
+            "Invalid attester"
+        );
+        require(
+            attestation.recipient == _msgSender(),
             "Invalid attestation recipient"
         );
 

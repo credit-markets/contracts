@@ -6,7 +6,8 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
 
   // You'll need to replace these with actual values
-  const assetAddress = "0x1234567890123456789012345678901234567890"; // Address of the ERC20 token used as the asset
+  const inaRegistryAddress = "0x1234567890123456789012345678901234567890"; // Address of the InaRegistry contract
+  const assetAddress = "0x2345678901234567890123456789012345678901"; // Address of the ERC20 token used as the asset
   const name = "Ina Pool Token";
   const symbol = "IPT";
   const poolParams = {
@@ -16,15 +17,20 @@ async function main() {
     amountToRaise: hre.ethers.parseEther("1000"), // 1000 tokens
     feeBasisPoints: 100, // 1%
     estimatedReturnBasisPoints: 1500, // 15%
-    creditFacilitator: "0x2345678901234567890123456789012345678901",
-    inaAdmWallet: "0x3456789012345678901234567890123456789012",
+    creditFacilitator: "0x3456789012345678901234567890123456789012",
     easContract: "0x4567890123456789012345678901234567890123",
-    kycLevel: 0,
+    kycLevel: 2,
     term: 120 * 24 * 60 * 60, // 120 days in seconds
   };
 
   const InaPool = await hre.ethers.getContractFactory("InaPool");
-  const inaPool = await InaPool.deploy(assetAddress, name, symbol, poolParams);
+  const inaPool = await InaPool.deploy(
+    inaRegistryAddress,
+    assetAddress,
+    name,
+    symbol,
+    poolParams
+  );
 
   await inaPool.waitForDeployment();
 
@@ -40,7 +46,13 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: deployedAddress,
-      constructorArguments: [assetAddress, name, symbol, poolParams],
+      constructorArguments: [
+        inaRegistryAddress,
+        assetAddress,
+        name,
+        symbol,
+        poolParams,
+      ],
     });
     console.log("Contract verified successfully");
   } catch (error) {
