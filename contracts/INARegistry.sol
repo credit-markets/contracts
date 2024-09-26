@@ -5,6 +5,8 @@ import "./InaAccountFactory.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title Registry
@@ -24,10 +26,13 @@ contract Registry is Ownable, Pausable {
     // Events
     event FactoryAdded(InaAccountFactory indexed factoryAddress);
     event FactoryRemoved(InaAccountFactory indexed factoryAddress);
-    event TokenAdded(IERC20[] tokenAddresses, address[] priceFeedAddresses);
+    event TokenAdded(
+        IERC20[] tokenAddresses,
+        AggregatorV3Interface[] priceFeedAddresses
+    );
     event TokenRemoved(IERC20[] tokenAddresses);
-    event ProductAdded(address[] productAddresses);
-    event ProductRemoved(address[] productAddresses);
+    event ProductAdded(IERC4626[] productAddresses);
+    event ProductRemoved(IERC4626[] productAddresses);
 
     // Constants
     uint256 public constant VERSION = 1;
@@ -73,7 +78,7 @@ contract Registry is Ownable, Pausable {
      */
     function addToken(
         IERC20[] memory tokenAddresses,
-        address[] memory priceFeedAddresses
+        AggregatorV3Interface[] memory priceFeedAddresses
     ) external onlyOwner whenNotPaused {
         require(
             tokenAddresses.length > 0 &&
@@ -90,7 +95,7 @@ contract Registry is Ownable, Pausable {
                 "Invalid token address"
             );
             require(
-                priceFeedAddresses[i] != address(0),
+                address(priceFeedAddresses[i]) != address(0),
                 "Invalid price feed address"
             );
         }
@@ -119,7 +124,7 @@ contract Registry is Ownable, Pausable {
      * @notice This function only emits an event and does not store the product addresses on-chain.
      */
     function addProduct(
-        address[] memory productAddresses
+        IERC4626[] memory productAddresses
     ) external onlyOwner whenNotPaused {
         require(
             productAddresses.length > 0 &&
@@ -135,7 +140,7 @@ contract Registry is Ownable, Pausable {
      * @notice This function only emits an event and does not remove any on-chain data.
      */
     function removeProduct(
-        address[] memory productAddresses
+        IERC4626[] memory productAddresses
     ) external onlyOwner whenNotPaused {
         require(
             productAddresses.length > 0 &&
