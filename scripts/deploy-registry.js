@@ -9,10 +9,10 @@ async function main() {
   );
 
   // Replace these with your actual values
-  const easAddress = "0x1234567890123456789012345678901234567890";
+  const easAddress = "0xF403D1cE0197373FE1F42b6fcdd8F66b61410700";
   const kycSchemaUID =
-    "0x1234567890123456789012345678901234567890123456789012345678901234";
-  const feeReceiverAddress = "0x9876543210987654321098765432109876543210";
+    "0xf5bd2195e0f1ba7f62373334a223109769b179cb717363089926ffbd9637630d";
+  const feeReceiverAddress = "0xAa93866E06c2Ec1fBDb5037D5495a3Aa6DB8F897";
 
   const Registry = await hre.ethers.getContractFactory("Registry");
   const registry = await Registry.deploy(
