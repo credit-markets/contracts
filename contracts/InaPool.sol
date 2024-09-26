@@ -41,7 +41,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 feeBasisPoints,
         uint256 estimatedReturnBasisPoints,
         address indexed creditFacilitator,
-        address easContract,
         uint256 kycLevel,
         uint256 term
     );
@@ -108,7 +107,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 feeBasisPoints;
         uint256 estimatedReturnBasisPoints;
         address creditFacilitator;
-        address easContract;
         uint256 kycLevel;
         uint256 term;
     }
@@ -139,7 +137,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
             address(inaRegistry_) != address(0),
             "Invalid inaRegistry address"
         );
-        require(pool.easContract != address(0), "Invalid EAS contract address");
         require(pool.term > 0, "Term must be greater than zero");
 
         _asset = asset_;
@@ -170,7 +167,6 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
             pool.feeBasisPoints,
             pool.estimatedReturnBasisPoints,
             pool.creditFacilitator,
-            pool.easContract,
             pool.kycLevel,
             pool.term
         );
