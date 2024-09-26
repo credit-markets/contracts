@@ -8,8 +8,18 @@ async function main() {
     deployer.address
   );
 
+  // Replace these with your actual values
+  const easAddress = "0x1234567890123456789012345678901234567890";
+  const kycSchemaUID =
+    "0x1234567890123456789012345678901234567890123456789012345678901234";
+  const feeReceiverAddress = "0x9876543210987654321098765432109876543210";
+
   const Registry = await hre.ethers.getContractFactory("Registry");
-  const registry = await Registry.deploy();
+  const registry = await Registry.deploy(
+    easAddress,
+    kycSchemaUID,
+    feeReceiverAddress
+  );
 
   await registry.waitForDeployment();
 
@@ -25,7 +35,7 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: deployedAddress,
-      constructorArguments: [],
+      constructorArguments: [easAddress, kycSchemaUID, feeReceiverAddress],
     });
     console.log("Contract verified successfully");
   } catch (error) {
