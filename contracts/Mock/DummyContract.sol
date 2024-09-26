@@ -9,3 +9,5 @@ import "@account-abstraction/contracts/samples/VerifyingPaymaster.sol";
 import "@account-abstraction/contracts/samples/utils/OracleHelper.sol";
 import "@account-abstraction/contracts/samples/utils/UniswapHelper.sol";
 import "light-account/MultiOwnerLightAccountFactory.sol" as MultiOwnerLightAccountFactory;
+import "@ethereum-attestation-service/eas-contracts/contracts/EAS.sol";
+import "@ethereum-attestation-service/eas-contracts/contracts/SchemaRegistry.sol";
