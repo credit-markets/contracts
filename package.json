@@ -3,10 +3,13 @@
     "@account-abstraction/contracts": "^0.7.0",
     "@alchemy/aa-alchemy": "^3.19.0",
     "@alchemy/aa-core": "^3.19.0",
+    "@chainlink/contracts": "^1.2.0",
+    "@ethereum-attestation-service/eas-contracts": "^1.7.1",
     "@openzeppelin/contracts": "^5.0.2",
     "@types/mocha": "^10.0.7",
     "dotenv": "^16.4.5",
-    "hardhat": "^2.22.8"
+    "hardhat": "^2.22.8",
+    "install": "^0.13.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.7",
