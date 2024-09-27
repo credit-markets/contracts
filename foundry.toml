@@ -6,5 +6,6 @@ test = 'test'
 cache_path  = 'cache_forge'
 
 remappings = [
-    'light-account/=lib/light-account/src/'
+    'light-account/=lib/light-account/src/',
+    'modular-account/=lib/light-account/lib/modular-account/src'
 ]
