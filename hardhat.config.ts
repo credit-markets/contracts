@@ -3,7 +3,6 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-foundry";
 import * as dotenv from "dotenv";
-
 dotenv.config();
 
 const { PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
@@ -26,6 +25,11 @@ const config: HardhatUserConfig = {
     target: "ethers-v5",
   },
   networks: {
+    hardhat: {
+      forking: {
+        url: "https://sepolia-rollup.arbitrum.io/rpc",
+      },
+    },
     arbitrumSepolia: {
       url: "https://sepolia-rollup.arbitrum.io/rpc",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
