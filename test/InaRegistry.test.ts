@@ -48,12 +48,27 @@ describe("Registry Contract", function () {
     await schemaRegistry.waitForDeployment();
     const schemaRegistryAddress = await schemaRegistry.getAddress();
     console.log("SchemaRegistry deployed to:", schemaRegistryAddress);
+    // Create a schema
+    const schema = "uint256 kycId, uint256 kycLevel, address smartWallet";
+    const revocable = true;
+    const resolver = ethers.ZeroAddress; // No resolver for this example
+
+    const tx = await schemaRegistry.register(schema, resolver, revocable);
+    const receipt = await tx.wait();
+
+    const event = receipt.logs.find(
+      (log: any) => log.fragment.name === "Registered"
+    );
+    const schemaId = event.args.uid;
+
+    console.log("Schema created with ID:", schemaId);
+
     // Deploy EAS Mock
     EAS = await ethers.getContractFactory("EAS");
     eas = (await EAS.deploy(schemaRegistryAddress)) as unknown as EAS;
     await eas.waitForDeployment();
     // Mock KYC Schema UID
-    kycSchemaUID = ethers.encodeBytes32String("kycSchema");
+    kycSchemaUID = schemaId;
 
     // Deploy Registry Contract
     Registry = await ethers.getContractFactory("Registry");
@@ -305,66 +320,65 @@ describe("Registry Contract", function () {
     });
   });
 
-  //   describe("KYC Attestation", function () {
-  //     // it("should allow attester to attest KYC", async function () {
-  //     //   const kycId = 12345;
-  //     //   const kycLevel = 1;
-  //     //   const smartWallet = await user1.getAddress();
+  describe("KYC Attestation", function () {
+    it("should allow attester to attest KYC", async function () {
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await user1.getAddress();
 
-  //     //   await expect(
-  //     //     registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
-  //     //   )
-  //     //     .to.emit(registry, "KYCAttested")
-  //     //     .withArgs(smartWallet, kycId, kycLevel, anyValue);
-  //     // });
+      await expect(
+        registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
+      )
+        .to.emit(registry, "KYCAttested")
+        .withArgs(smartWallet, kycId, kycLevel, anyValue);
+    });
 
-  //     //   it("should allow attester to revoke KYC", async function () {
-  //     //     const kycId = 12345;
-  //     //     const kycLevel = 2;
-  //     //     const smartWallet = await user1.getAddress();
+    it("should allow attester to revoke KYC", async function () {
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await user1.getAddress();
 
-  //     //     const tx = await registry
-  //     //       .connect(attester)
-  //     //       .attestKYC(kycId, kycLevel, smartWallet);
-  //     //     const receipt = await tx.;
-  //     //     const event = receipt.events?.find((e) => e.event === "KYCAttested");
-  //     //     const attestationUID = event?.args?.attestationUID;
+      await registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet);
+      // const receipt = await tx.filters;
+      const filter = registry.filters.KYCAttested;
+      const events = await registry.queryFilter(filter(), -1);
+      const event = events[0];
+      const attestationUID = event?.args?.attestationUID;
 
-  //     //     await expect(registry.connect(attester).revokeKYC(attestationUID))
-  //     //       .to.emit(registry, "KYCRevoked")
-  //     //       .withArgs(smartWallet, attestationUID);
-  //     //   });
+      await expect(registry.connect(attester).revokeKYC(attestationUID))
+        .to.emit(registry, "KYCRevoked")
+        .withArgs(smartWallet, attestationUID);
+    });
 
-  //     //   it("should not allow non-attester to attest or revoke KYC", async function () {
-  //     //     const attesterRole = await registry.ATTESTER_ROLE();
-  //     //     const kycId = 12345;
-  //     //     const kycLevel = 2;
-  //     //     const smartWallet = await user1.getAddress();
+    it("should not allow non-attester to attest or revoke KYC", async function () {
+      const attesterRole = await registry.ATTESTER_ROLE();
+      const kycId = 12345;
+      const kycLevel = 2;
+      const smartWallet = await user1.getAddress();
 
-  //     //     await expect(
-  //     //       registry.connect(user1).attestKYC(kycId, kycLevel, smartWallet)
-  //     //     ).to.be.revertedWith(
-  //     //       `AccessControl: account ${(
-  //     //         await user1.getAddress()
-  //     //       ).toLowerCase()} is missing role ${attesterRole}`
-  //     //     );
+      await expect(
+        registry.connect(user1).attestKYC(kycId, kycLevel, smartWallet)
+      )
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), attesterRole);
 
-  //     //     const tx = await registry
-  //     //       .connect(attester)
-  //     //       .attestKYC(kycId, kycLevel, smartWallet);
-  //     //     const receipt = await tx.wait();
-  //     //     const event = receipt.events?.find((e) => e.event === "KYCAttested");
-  //     //     const attestationUID = event?.args?.attestationUID;
+      await registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet);
+      const filter = registry.filters.KYCAttested;
+      const events = await registry.queryFilter(filter(), -1);
+      const event = events[0];
+      const attestationUID = event?.args?.attestationUID;
 
-  //     //     await expect(
-  //     //       registry.connect(user1).revokeKYC(attestationUID)
-  //     //     ).to.be.revertedWith(
-  //     //       `AccessControl: account ${(
-  //     //         await user1.getAddress()
-  //     //       ).toLowerCase()} is missing role ${attesterRole}`
-  //     //     );
-  //     //   });
-  //   });
+      await expect(registry.connect(user1).revokeKYC(attestationUID))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), attesterRole);
+    });
+  });
 
   describe("Administrative Functions", function () {
     it("should allow admin to set KYC schema UID", async function () {
