@@ -12,7 +12,9 @@ import {
   InaAccountFactory,
   ERC20,
   EntryPoint,
+  TestOracle2,
 } from "../typechain";
+import { Test } from "mocha";
 
 describe("Registry Contract", function () {
   let Registry: ContractFactory;
@@ -27,8 +29,8 @@ describe("Registry Contract", function () {
   let entryPoint: EntryPoint;
   let entryPointAddress: string;
   let PriceFeedMock: ContractFactory;
-  let priceFeed1: Contract;
-  let priceFeed2: Contract;
+  let priceFeed1: TestOracle2;
+  let priceFeed2: TestOracle2;
   let owner: Signer;
   let admin: Signer;
   let attester: Signer;
@@ -81,11 +83,11 @@ describe("Registry Contract", function () {
     await token2.waitForDeployment();
 
     // Deploy Price Feed Mocks
-    // PriceFeedMock = await ethers.getContractFactory("PriceFeedMock");
-    // priceFeed1 = await PriceFeedMock.deploy();
-    // priceFeed2 = await PriceFeedMock.deploy();
-    // await priceFeed1.deployed();
-    // await priceFeed2.deployed();
+    PriceFeedMock = await ethers.getContractFactory("TestOracle2");
+    priceFeed1 = (await PriceFeedMock.deploy(120, 18)) as any;
+    priceFeed2 = (await PriceFeedMock.deploy(150, 18)) as any;
+    await priceFeed1.waitForDeployment();
+    await priceFeed2.waitForDeployment();
 
     // Grant Roles
     await registry
@@ -224,177 +226,178 @@ describe("Registry Contract", function () {
     });
   });
 
-  //   describe("Token Management", function () {
-  //     it("should allow operator to add tokens", async function () {
-  //       const tokens = [await token1.getAddress(), await token2.getAddress()];
-  //       const priceFeeds = [priceFeed1.address, priceFeed2.address];
+  describe("Token Management", function () {
+    it("should allow operator to add tokens", async function () {
+      const tokens = [await token1.getAddress(), await token2.getAddress()];
+      const priceFeeds = [
+        await priceFeed1.getAddress(),
+        await priceFeed2.getAddress(),
+      ];
 
-  //       await expect(registry.connect(operator).addToken(tokens, priceFeeds))
-  //         .to.emit(registry, "TokenAdded")
-  //         .withArgs(tokens, priceFeeds);
-  //     });
+      await expect(registry.connect(operator).addToken(tokens, priceFeeds))
+        .to.emit(registry, "TokenAdded")
+        .withArgs(tokens, priceFeeds);
+    });
 
-  //     it("should allow operator to remove tokens", async function () {
-  //       const tokens = [token1.address, token2.address];
+    it("should allow operator to remove tokens", async function () {
+      const tokens = [await token1.getAddress(), await token2.getAddress()];
 
-  //       await expect(registry.connect(operator).removeToken(tokens))
-  //         .to.emit(registry, "TokenRemoved")
-  //         .withArgs(tokens);
-  //     });
+      await expect(registry.connect(operator).removeToken(tokens))
+        .to.emit(registry, "TokenRemoved")
+        .withArgs(tokens);
+    });
 
-  //     it("should not allow non-operator to add or remove tokens", async function () {
-  //       const operatorRole = await registry.OPERATOR_ROLE();
-  //       const tokens = [token1.address];
-  //       const priceFeeds = [priceFeed1.address];
+    it("should not allow non-operator to add or remove tokens", async function () {
+      const operatorRole = await registry.OPERATOR_ROLE();
+      const tokens = [await token1.getAddress()];
+      const priceFeeds = [await priceFeed1.getAddress()];
 
-  //       await expect(
-  //         registry.connect(user1).addToken(tokens, priceFeeds)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${operatorRole}`
-  //       );
+      await expect(registry.connect(user1).addToken(tokens, priceFeeds))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), operatorRole);
 
-  //       await expect(
-  //         registry.connect(user1).removeToken(tokens)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${operatorRole}`
-  //       );
-  //     });
-  //   });
+      await expect(registry.connect(user1).removeToken(tokens))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), operatorRole);
+    });
+  });
 
-  //   describe("Pool Management", function () {
-  //     it("should allow operator to add pools", async function () {
-  //       const pools = [token1.address, token2.address];
+  describe("Pool Management", function () {
+    it("should allow operator to add pools", async function () {
+      const pools = [await token1.getAddress(), await token2.getAddress()];
 
-  //       await expect(registry.connect(operator).addPool(pools))
-  //         .to.emit(registry, "PoolAdded")
-  //         .withArgs(pools);
-  //     });
+      await expect(registry.connect(operator).addPool(pools))
+        .to.emit(registry, "PoolAdded")
+        .withArgs(pools);
+    });
 
-  //     it("should allow operator to remove pools", async function () {
-  //       const pools = [token1.address, token2.address];
+    it("should allow operator to remove pools", async function () {
+      const pools = [await token1.getAddress(), await token2.getAddress()];
 
-  //       await expect(registry.connect(operator).removePool(pools))
-  //         .to.emit(registry, "PoolRemoved")
-  //         .withArgs(pools);
-  //     });
+      await expect(registry.connect(operator).removePool(pools))
+        .to.emit(registry, "PoolRemoved")
+        .withArgs(pools);
+    });
 
-  //     it("should not allow non-operator to add or remove pools", async function () {
-  //       const operatorRole = await registry.OPERATOR_ROLE();
-  //       const pools = [token1.address];
+    it("should not allow non-operator to add or remove pools", async function () {
+      const operatorRole = await registry.OPERATOR_ROLE();
+      const pools = [await token1.getAddress()];
 
-  //       await expect(registry.connect(user1).addPool(pools)).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${operatorRole}`
-  //       );
+      await expect(registry.connect(user1).addPool(pools))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), operatorRole);
 
-  //       await expect(
-  //         registry.connect(user1).removePool(pools)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${operatorRole}`
-  //       );
-  //     });
-  //   });
+      await expect(registry.connect(user1).removePool(pools))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), operatorRole);
+    });
+  });
 
   //   describe("KYC Attestation", function () {
-  //     it("should allow attester to attest KYC", async function () {
-  //       const kycId = 12345;
-  //       const kycLevel = 2;
-  //       const smartWallet = await user1.getAddress();
+  //     // it("should allow attester to attest KYC", async function () {
+  //     //   const kycId = 12345;
+  //     //   const kycLevel = 1;
+  //     //   const smartWallet = await user1.getAddress();
 
-  //       await expect(
-  //         registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
-  //       )
-  //         .to.emit(registry, "KYCAttested")
-  //         .withArgs(smartWallet, kycId, kycLevel, anyValue);
-  //     });
+  //     //   await expect(
+  //     //     registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
+  //     //   )
+  //     //     .to.emit(registry, "KYCAttested")
+  //     //     .withArgs(smartWallet, kycId, kycLevel, anyValue);
+  //     // });
 
-  //     it("should allow attester to revoke KYC", async function () {
-  //       const kycId = 12345;
-  //       const kycLevel = 2;
-  //       const smartWallet = await user1.getAddress();
+  //     //   it("should allow attester to revoke KYC", async function () {
+  //     //     const kycId = 12345;
+  //     //     const kycLevel = 2;
+  //     //     const smartWallet = await user1.getAddress();
 
-  //       const tx = await registry
-  //         .connect(attester)
-  //         .attestKYC(kycId, kycLevel, smartWallet);
-  //       const receipt = await tx.wait();
-  //       const event = receipt.events?.find((e) => e.event === "KYCAttested");
-  //       const attestationUID = event?.args?.attestationUID;
+  //     //     const tx = await registry
+  //     //       .connect(attester)
+  //     //       .attestKYC(kycId, kycLevel, smartWallet);
+  //     //     const receipt = await tx.;
+  //     //     const event = receipt.events?.find((e) => e.event === "KYCAttested");
+  //     //     const attestationUID = event?.args?.attestationUID;
 
-  //       await expect(registry.connect(attester).revokeKYC(attestationUID))
-  //         .to.emit(registry, "KYCRevoked")
-  //         .withArgs(smartWallet, attestationUID);
-  //     });
+  //     //     await expect(registry.connect(attester).revokeKYC(attestationUID))
+  //     //       .to.emit(registry, "KYCRevoked")
+  //     //       .withArgs(smartWallet, attestationUID);
+  //     //   });
 
-  //     it("should not allow non-attester to attest or revoke KYC", async function () {
-  //       const attesterRole = await registry.ATTESTER_ROLE();
-  //       const kycId = 12345;
-  //       const kycLevel = 2;
-  //       const smartWallet = await user1.getAddress();
+  //     //   it("should not allow non-attester to attest or revoke KYC", async function () {
+  //     //     const attesterRole = await registry.ATTESTER_ROLE();
+  //     //     const kycId = 12345;
+  //     //     const kycLevel = 2;
+  //     //     const smartWallet = await user1.getAddress();
 
-  //       await expect(
-  //         registry.connect(user1).attestKYC(kycId, kycLevel, smartWallet)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${attesterRole}`
-  //       );
+  //     //     await expect(
+  //     //       registry.connect(user1).attestKYC(kycId, kycLevel, smartWallet)
+  //     //     ).to.be.revertedWith(
+  //     //       `AccessControl: account ${(
+  //     //         await user1.getAddress()
+  //     //       ).toLowerCase()} is missing role ${attesterRole}`
+  //     //     );
 
-  //       const tx = await registry
-  //         .connect(attester)
-  //         .attestKYC(kycId, kycLevel, smartWallet);
-  //       const receipt = await tx.wait();
-  //       const event = receipt.events?.find((e) => e.event === "KYCAttested");
-  //       const attestationUID = event?.args?.attestationUID;
+  //     //     const tx = await registry
+  //     //       .connect(attester)
+  //     //       .attestKYC(kycId, kycLevel, smartWallet);
+  //     //     const receipt = await tx.wait();
+  //     //     const event = receipt.events?.find((e) => e.event === "KYCAttested");
+  //     //     const attestationUID = event?.args?.attestationUID;
 
-  //       await expect(
-  //         registry.connect(user1).revokeKYC(attestationUID)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${attesterRole}`
-  //       );
-  //     });
+  //     //     await expect(
+  //     //       registry.connect(user1).revokeKYC(attestationUID)
+  //     //     ).to.be.revertedWith(
+  //     //       `AccessControl: account ${(
+  //     //         await user1.getAddress()
+  //     //       ).toLowerCase()} is missing role ${attesterRole}`
+  //     //     );
+  //     //   });
   //   });
 
-  //   describe("Administrative Functions", function () {
-  //     it("should allow admin to set KYC schema UID", async function () {
-  //       const newSchemaUID = ethers.utils.formatBytes32String("newKycSchema");
-  //       await registry.connect(admin).setKYCSchemaUID(newSchemaUID);
-  //       expect(await registry.kycSchemaUID()).to.equal(newSchemaUID);
-  //     });
+  describe("Administrative Functions", function () {
+    it("should allow admin to set KYC schema UID", async function () {
+      const newSchemaUID = ethers.encodeBytes32String("newKycSchema");
+      await registry.connect(admin).setKYCSchemaUID(newSchemaUID);
+      expect(await registry.kycSchemaUID()).to.equal(newSchemaUID);
+    });
 
-  //     it("should allow admin to set fee receiver", async function () {
-  //       await registry.connect(admin).setFeeReceiver(await user2.getAddress());
-  //       expect(await registry.feeReceiver()).to.equal(await user2.getAddress());
-  //     });
+    it("should allow admin to set fee receiver", async function () {
+      await registry.connect(admin).setFeeReceiver(await user2.getAddress());
+      expect(await registry.feeReceiver()).to.equal(await user2.getAddress());
+    });
 
-  //     it("should not allow non-admin to set KYC schema UID or fee receiver", async function () {
-  //       const defaultAdminRole = await registry.DEFAULT_ADMIN_ROLE();
-  //       const newSchemaUID = ethers.utils.formatBytes32String("newKycSchema");
-  //       await expect(
-  //         registry.connect(user1).setKYCSchemaUID(newSchemaUID)
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${defaultAdminRole}`
-  //       );
+    it("should not allow non-admin to set KYC schema UID or fee receiver", async function () {
+      const defaultAdminRole = await registry.DEFAULT_ADMIN_ROLE();
+      const newSchemaUID = ethers.encodeBytes32String("newKycSchema");
+      await expect(registry.connect(user1).setKYCSchemaUID(newSchemaUID))
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), defaultAdminRole);
 
-  //       await expect(
-  //         registry.connect(user1).setFeeReceiver(await user2.getAddress())
-  //       ).to.be.revertedWith(
-  //         `AccessControl: account ${(
-  //           await user1.getAddress()
-  //         ).toLowerCase()} is missing role ${defaultAdminRole}`
-  //       );
-  //     });
-  //   });
+      await expect(
+        registry.connect(user1).setFeeReceiver(await user2.getAddress())
+      )
+        .to.be.revertedWithCustomError(
+          registry,
+          "AccessControlUnauthorizedAccount"
+        )
+        .withArgs(await user1.getAddress(), defaultAdminRole);
+    });
+  });
 
   describe("Pausable Functionality", function () {
     it("should allow admin to pause and unpause the contract", async function () {
