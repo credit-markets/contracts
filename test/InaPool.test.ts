@@ -5,6 +5,7 @@ import { InaPool, Registry, EAS, TestERC20 } from "../typechain";
 import { inaRegistrySol } from "../typechain/contracts";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { AlchemyPaymasterAddressV3 } from "@alchemy/aa-alchemy/dist/types/gas-manager";
+import { bigint } from "hardhat/internal/core/params/argumentTypes";
 
 describe("InaPool Deployment", function () {
   let inaPool: InaPool,
@@ -34,7 +35,6 @@ describe("InaPool Deployment", function () {
     const schemaRegistry = await SchemaRegistry.deploy();
     await schemaRegistry.waitForDeployment();
     const schemaRegistryAddress = await schemaRegistry.getAddress();
-    console.log("SchemaRegistry deployed to:", schemaRegistryAddress);
 
     // Create a schema
     const schema = "uint256 kycId, uint256 kycLevel, address smartWallet";
@@ -48,8 +48,6 @@ describe("InaPool Deployment", function () {
       (log: any) => log.fragment.name === "Registered"
     );
     const schemaId = event.args.uid;
-
-    console.log("Schema created with ID:", schemaId);
 
     const currentBlock = await ethers.provider.getBlock("latest");
     startTime = currentBlock.timestamp + 100; // Start after 100 seconds from now
@@ -257,7 +255,6 @@ describe("InaPool Deployment", function () {
       const events1 = await registry.queryFilter(filter1, -1);
       const event1 = events1[events1.length - 1]; // Get the latest event
       const attestationUID = event1?.args?.attestationUID;
-      console.log("First Attestation UID:", attestationUID);
 
       // Second KYC attestation for addr3
       await expect(
@@ -271,7 +268,6 @@ describe("InaPool Deployment", function () {
       const events2 = await registry.queryFilter(filter2, -1);
       const event2 = events2[events2.length - 1]; // Get the latest event
       const attestationUID1 = event2?.args?.attestationUID;
-      console.log("Second Attestation UID:", attestationUID1);
 
       // Deposit tokens
       const depositTx = await inaPool
@@ -305,6 +301,301 @@ describe("InaPool Deployment", function () {
       expect(await asset.balanceOf(facilitatorAddress)).to.equal(
         facilitatorAmount
       );
+      await ethers.provider.send("evm_revert", [snapshotId]);
+    });
+
+    it("Should repay investors correctly", async function () {
+      const snapshotId = await ethers.provider.send("evm_snapshot", []);
+      const facilitatorAddress = await facilitator.getAddress();
+
+      const totalPoolAmount = ethers.parseEther("100000000000000000"); // large amount for the pool
+      const depositAmount = ethers.parseEther("20"); // amount each investor deposits
+
+      // Facilitator mints and approves large pool amount
+      await asset.sudoMint(facilitatorAddress, totalPoolAmount);
+      await asset
+        .connect(facilitator)
+        .approve(inaPool.getAddress(), totalPoolAmount);
+
+      // Investor initial balances before deposits
+      const investor1InitialBalance = ethers.getBigInt(
+        await asset.balanceOf(await addr2.getAddress())
+      );
+
+      const investor2InitialBalance = ethers.getBigInt(
+        await asset.balanceOf(await addr3.getAddress())
+      );
+
+      // Mint and deposit for investors
+      const addr2Address = await addr2.getAddress();
+      const addr3Address = await addr3.getAddress();
+
+      await asset.sudoMint(addr2Address, depositAmount);
+      await asset.sudoMint(addr3Address, depositAmount);
+
+      await asset.connect(addr2).approve(inaPool.getAddress(), depositAmount);
+      await asset.connect(addr3).approve(inaPool.getAddress(), depositAmount);
+
+      // Use EAS for KYC verification
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await addr2.getAddress();
+      const smartWallet1 = await addr3.getAddress();
+
+      // First KYC attestation for addr2
+      await expect(
+        registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
+      )
+        .to.emit(registry, "KYCAttested")
+        .withArgs(smartWallet, kycId, kycLevel, anyValue);
+
+      // Second KYC attestation for addr3
+      await expect(
+        registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet1)
+      )
+        .to.emit(registry, "KYCAttested")
+        .withArgs(smartWallet1, kycId, kycLevel, anyValue);
+
+      // Deposit tokens for addr2 and addr3
+      const attestationUID = (
+        await registry.queryFilter(
+          registry.filters.KYCAttested(smartWallet, null, null),
+          -1
+        )
+      )[0]?.args?.attestationUID;
+
+      const attestationUID1 = (
+        await registry.queryFilter(
+          registry.filters.KYCAttested(smartWallet1, null, null),
+          -1
+        )
+      )[0]?.args?.attestationUID;
+
+      await inaPool.connect(addr2).deposit(depositAmount, attestationUID);
+      await inaPool.connect(addr3).deposit(depositAmount, attestationUID1);
+
+      // Fast forward time for repayment
+      await ethers.provider.send("evm_increaseTime", [86000400]); // fast-forward about 1 year
+      await ethers.provider.send("evm_mine", []);
+
+      const supplyBefore = ethers.getBigInt(await inaPool.totalSupply());
+      // Total repayment amount calculated by inaPool
+      const totalRepayment = await inaPool.calculateRepaymentAmount();
+
+      // Calculate expected repayment for each investor based on their share of the pool
+      const investor1Shares = ethers.getBigInt(
+        await inaPool.balanceOf(await addr2.getAddress())
+      );
+
+      const investor2Shares = ethers.getBigInt(
+        await inaPool.balanceOf(await addr3.getAddress())
+      );
+
+      // Facilitator takes funds
+      await expect(inaPool.connect(facilitator).takeFunds())
+        .to.emit(inaPool, "FundsTaken")
+        .withArgs(facilitatorAddress, anyValue);
+
+      await ethers.provider.send("evm_increaseTime", [86400]); // fast-forward about 1 day
+      await ethers.provider.send("evm_mine", []);
+
+      // Facilitator repays the pool
+      await expect(inaPool.connect(facilitator).repay())
+        .to.emit(inaPool, "Repaid")
+        .withArgs(anyValue);
+
+      // Investor balances after repayment
+      const investor1FinalBalance = ethers.getBigInt(
+        await asset.balanceOf(await addr2.getAddress())
+      );
+
+      const investor2FinalBalance = ethers.getBigInt(
+        await asset.balanceOf(await addr3.getAddress())
+      );
+
+      const expectedInvestor1Repayment =
+        (totalRepayment * investor1Shares) / supplyBefore;
+      const expectedInvestor2Repayment =
+        (totalRepayment * investor2Shares) / supplyBefore;
+
+      // Assertion that final balances are correct with closeTo to handle minor deviations
+      expect(investor1FinalBalance - investor1InitialBalance).to.be.eq(
+        expectedInvestor1Repayment
+      );
+
+      expect(investor2FinalBalance - investor2InitialBalance).to.be.eq(
+        expectedInvestor2Repayment
+      );
+
+      // Revert snapshot after the test
+      await ethers.provider.send("evm_revert", [snapshotId]);
+    });
+
+    it("User 1 with valid KYC can invest, User 2 with fake KYC cannot", async function () {
+      const snapshotId = await ethers.provider.send("evm_snapshot", []);
+      // Mock KYC details for User 1 (valid KYC)
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await addr1.getAddress();
+
+      // Attest valid KYC for User 1
+      await expect(
+        registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet)
+      )
+        .to.emit(registry, "KYCAttested")
+        .withArgs(smartWallet, kycId, kycLevel, anyValue);
+
+      // Filter and get the KYC attestation event for User 1
+      const filter = registry.filters.KYCAttested(smartWallet, null, null);
+      const events = await registry.queryFilter(filter, -1);
+      const attestationUID = events[0]?.args?.attestationUID;
+
+      // Mint tokens for User 1 and approve for InaPool
+      await asset.sudoMint(await addr1.getAddress(), ethers.parseEther("20"));
+      await asset
+        .connect(addr1)
+        .approve(inaPool.getAddress(), ethers.parseEther("10"));
+
+      // Fast forward time to open the investment period
+      await ethers.provider.send("evm_increaseTime", [101]);
+      await ethers.provider.send("evm_mine", []);
+
+      // User 1 should be able to invest with valid KYC
+      const depositTx = await inaPool
+        .connect(addr1)
+        .deposit(ethers.parseEther("10"), attestationUID);
+      await depositTx.wait();
+
+      // Mock KYC details for User 2 (fake KYC)
+      const invalidAttestationUID = ethers.encodeBytes32String("fakeKYC");
+
+      // Mint tokens for User 2 and approve for InaPool
+      await asset.sudoMint(await addr2.getAddress(), ethers.parseEther("20"));
+      await asset
+        .connect(addr2)
+        .approve(inaPool.getAddress(), ethers.parseEther("10"));
+
+      // User 2 should be reverted when trying to invest with fake KYC
+      await expect(
+        inaPool
+          .connect(addr2)
+          .deposit(ethers.parseEther("10"), invalidAttestationUID)
+      ).to.be.revertedWith("Invalid attester");
+
+      // Verify that User 1's investment succeeded
+      expect(await inaPool.balanceOf(await addr1.getAddress())).to.be.gt(0);
+
+      // Verify that User 2 did not deposit any funds
+      expect(await inaPool.balanceOf(await addr2.getAddress())).to.equal(0);
+
+      // Revert snapshot after the test
+      await ethers.provider.send("evm_revert", [snapshotId]);
+    });
+
+    it("Should fail when trying to invest after all tokens are sold out", async function () {
+      const snapshotId = await ethers.provider.send("evm_snapshot", []);
+      // Set total supply or available pool size for the test
+      const totalPoolSize =
+        (await inaPool.amountToRaise()) - (await inaPool.totalAssets());
+
+      // Mint enough tokens to cover the total pool size for User 1
+      await asset.sudoMint(await addr1.getAddress(), totalPoolSize);
+      await asset.connect(addr1).approve(inaPool.getAddress(), totalPoolSize);
+
+      // Attest valid KYC for User 1
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await addr1.getAddress();
+      await registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet);
+
+      // Filter and get the KYC attestation event for User 1
+      const filter = registry.filters.KYCAttested(smartWallet, null, null);
+      const events = await registry.queryFilter(filter, -1);
+      const attestationUID = events[0]?.args?.attestationUID;
+
+      // Fast forward time to open the investment period
+      await ethers.provider.send("evm_increaseTime", [101]);
+      await ethers.provider.send("evm_mine", []);
+
+      // User 1 invests the total pool size, filling the pool
+      await inaPool.connect(addr1).deposit(totalPoolSize, attestationUID);
+
+      // Verify that the pool is fully invested
+      expect(await inaPool.totalAssets()).to.equal(
+        await inaPool.amountToRaise()
+      );
+      // Mint tokens for User 2 and approve InaPool
+      await asset.sudoMint(await addr2.getAddress(), ethers.parseEther("10"));
+      await asset
+        .connect(addr2)
+        .approve(inaPool.getAddress(), ethers.parseEther("10"));
+
+      const smartWallet1 = await addr2.getAddress();
+
+      await expect(
+        registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet1)
+      )
+        .to.emit(registry, "KYCAttested")
+        .withArgs(smartWallet1, kycId, kycLevel, anyValue);
+
+      const filter1 = registry.filters.KYCAttested;
+      const events1 = await registry.queryFilter(filter1(), -1);
+      const event1 = events1[0];
+      const attestationUID1 = event1?.args?.attestationUID;
+
+      await expect(
+        inaPool.connect(addr2).deposit(ethers.parseEther("10"), attestationUID1)
+      ).to.be.revertedWith("Investment exceeds amount to raise");
+
+      // Verify that User 2 did not deposit any funds
+      expect(await inaPool.balanceOf(await addr2.getAddress())).to.equal(0);
+
+      // Revert snapshot after the test
+      await ethers.provider.send("evm_revert", [snapshotId]);
+    });
+    it("Should fail if trying to refund twice", async function () {
+      const snapshotId = await ethers.provider.send("evm_snapshot", []);
+      // Set up the investment scenario
+      const investmentAmount = ethers.parseEther("10");
+
+      // Mint tokens for User 1 and approve InaPool
+      await asset.sudoMint(await addr1.getAddress(), investmentAmount);
+      await asset
+        .connect(addr1)
+        .approve(inaPool.getAddress(), investmentAmount);
+
+      // Attest valid KYC for User 1
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await addr1.getAddress();
+      await registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet);
+
+      // Filter and get the KYC attestation event for User 1
+      const filter = registry.filters.KYCAttested(smartWallet, null, null);
+      const events = await registry.queryFilter(filter, -1);
+      const attestationUID = events[0]?.args?.attestationUID;
+
+      // Fast forward time to open the investment period
+      await ethers.provider.send("evm_increaseTime", [101]);
+      await ethers.provider.send("evm_mine", []);
+
+      // User 1 invests in the pool
+      await inaPool.connect(addr1).deposit(investmentAmount, attestationUID);
+
+      // Fast forward time to finish the investment period
+      await ethers.provider.send("evm_increaseTime", [100001]);
+      await ethers.provider.send("evm_mine", []);
+      // Now simulate a refund scenario
+      await inaPool.connect(addr1).refund();
+
+      // Verify that User 1's balance is zero after the refund
+      expect(await inaPool.balanceOf(await addr1.getAddress())).to.equal(0);
+
+      // User 1 tries to request a refund again (should fail)
+      await expect(inaPool.connect(addr1).refund()).to.be.revertedWith(
+        "Already refunded"
+      );
+      // Revert snapshot after the test
       await ethers.provider.send("evm_revert", [snapshotId]);
     });
   });
