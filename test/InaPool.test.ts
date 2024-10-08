@@ -598,5 +598,43 @@ describe("InaPool Deployment", function () {
       // Revert snapshot after the test
       await ethers.provider.send("evm_revert", [snapshotId]);
     });
+    it("Should fail when trying to invest without KYC, succeed after KYC is completed", async function () {
+      const investmentAmount = ethers.parseEther("10");
+      const amountBefore = await inaPool.balanceOf(await addr1.getAddress());
+
+      // Mint tokens for User 1 and approve InaPool
+      await asset.sudoMint(await addr1.getAddress(), investmentAmount);
+      await asset
+        .connect(addr1)
+        .approve(inaPool.getAddress(), investmentAmount);
+
+      // Fast forward time to open the investment period
+      await ethers.provider.send("evm_increaseTime", [101]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Attempt to invest without KYC, should revert
+      await expect(
+        inaPool.connect(addr1).deposit(investmentAmount, ethers.ZeroHash)
+      ).to.be.revertedWith("Invalid attester");
+
+      // Perform KYC for User 1
+      const kycId = 12345;
+      const kycLevel = 1;
+      const smartWallet = await addr1.getAddress();
+      await registry.connect(attester).attestKYC(kycId, kycLevel, smartWallet);
+
+      // Filter and get the KYC attestation event for User 1
+      const filter = registry.filters.KYCAttested(smartWallet, null, null);
+      const events = await registry.queryFilter(filter, -1);
+      const attestationUID = events[0]?.args?.attestationUID;
+
+      // User 1 tries again to invest, this time with valid KYC
+      await inaPool.connect(addr1).deposit(investmentAmount, attestationUID);
+
+      // Verify that the investment was successful
+      expect(await inaPool.balanceOf(await addr1.getAddress())).to.equal(
+        investmentAmount + amountBefore
+      );
+    });
   });
 });
