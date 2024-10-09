@@ -375,7 +375,7 @@ describe("InaPool Deployment", function () {
       await inaPool.connect(addr3).deposit(depositAmount, attestationUID1);
 
       // Fast forward time for repayment
-      await ethers.provider.send("evm_increaseTime", [86000400]); // fast-forward about 1 year
+      await ethers.provider.send("evm_increaseTime", [7200]); // fast-forward about 2 hours
       await ethers.provider.send("evm_mine", []);
 
       const supplyBefore = ethers.getBigInt(await inaPool.totalSupply());
