@@ -482,6 +482,12 @@ describe("InaPool Deployment", function () {
           .deposit(ethers.parseEther("10"), invalidAttestationUID)
       ).to.be.revertedWith("Invalid attester");
 
+      // User 2 should be reverted when trying to invest with another users KYC
+      await expect(
+        inaPool
+          .connect(addr2)
+          .deposit(ethers.parseEther("10"), attestationUID)
+      ).to.be.revertedWith("Invalid attestation recipient");
       // Verify that User 1's investment succeeded
       expect(await inaPool.balanceOf(await addr1.getAddress())).to.be.gt(0);
 
