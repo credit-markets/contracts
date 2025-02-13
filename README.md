@@ -1,13 +1,57 @@
-# Sample Hardhat Project
+# Ina Contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+This repository contains the smart contracts for the Ina project. It uses both Hardhat and Foundry for development and testing.
 
-Try running some of the following tasks:
+## Prerequisites
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.js
+- Node.js and npm
+- Foundry (forge, anvil, and cast)
+
+## Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/INA-protocol/Ina-contracts.git
+cd Ina-contracts
 ```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+## Building
+
+To build the contracts, you'll need to run both Foundry and Hardhat builds:
+
+```bash
+# Build with Foundry
+forge build
+
+# Build with Hardhat
+npx hardhat compile
+```
+
+## Running Scripts
+
+To run a script:
+
+```bash
+npx hardhat run scripts/example-script.js
+```
+
+## Testing
+
+```bash
+# Run Hardhat tests
+npx hardhat test
+
+# Run Foundry tests
+forge test
+```
+
+## License
+
+[License Type] - See LICENSE file for details
