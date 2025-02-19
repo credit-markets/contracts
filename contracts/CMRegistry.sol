@@ -1,49 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./InaAccountFactory.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./CMAccountFactory.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
 
 /**
- * @title UpgradeableRegistry
- * @dev This contract manages factories, tokens, pools, and interacts with EAS for attestations in the INA Protocol.
+ * @title Registry
+ * @dev This contract manages factories, tokens, pools, and interacts with EAS for attestations in the CM Protocol.
  *
  * @notice This contract emits events for adding and removing factories, tokens, and pools.
  * It also integrates with the Ethereum Attestation Service (EAS) for managing attestations.
- *
- * ██╗███╗   ██╗ █████╗     ██████╗ ███████╗ ██████╗ ██╗███████╗████████╗██████╗ ██╗   ██╗
- * ██║████╗  ██║██╔══██╗    ██╔══██╗██╔════╝██╔════╝ ██║██╔════╝╚══██╔══╝██╔══██╗╚██╗ ██╔╝
- * ██║██╔██╗ ██║███████║    ██████╔╝█████╗  ██║  ███╗██║███████╗   ██║   ██████╔╝ ╚████╔╝
- * ██║██║╚██╗██║██╔══██║    ██╔══██╗██╔══╝  ██║   ██║██║╚════██║   ██║   ██╔══██╗  ╚██╔╝
- * ██║██║ ╚████║██║  ██║    ██║  ██║███████╗╚██████╔╝██║███████║   ██║   ██║  ██║   ██║
- * ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝   ╚═╝
  */
-contract UpgradeableRegistry is
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable,
-    UUPSUpgradeable
-{
+contract Registry is AccessControl, Pausable {
     // Roles
     bytes32 public constant ATTESTER_ROLE = keccak256("ATTESTER_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     // Events
-    event FactoryAdded(InaAccountFactory indexed factoryAddress);
-    event FactoryRemoved(InaAccountFactory indexed factoryAddress);
+    event FactoryAdded(CMAccountFactory indexed factoryAddress);
+    event FactoryRemoved(CMAccountFactory indexed factoryAddress);
     event TokenAdded(
-        IERC20Upgradeable[] tokenAddresses,
+        IERC20[] tokenAddresses,
         AggregatorV3Interface[] priceFeedAddresses
     );
-    event TokenRemoved(IERC20Upgradeable[] tokenAddresses);
-    event PoolAdded(IERC20Upgradeable[] poolAddresses);
-    event PoolRemoved(IERC20Upgradeable[] poolAddresses);
+    event TokenRemoved(IERC20[] tokenAddresses);
+    event PoolAdded(IERC20[] poolAddresses);
+    event PoolRemoved(IERC20[] poolAddresses);
     event KYCAttested(
         address indexed smartWallet,
         uint256 kycId,
@@ -57,7 +43,7 @@ contract UpgradeableRegistry is
     uint256 public constant MAX_BATCH_SIZE = 100;
 
     // EAS contract
-    IEAS public eas;
+    IEAS public immutable eas;
 
     // Fee Receiver wallet
     address public feeReceiver;
@@ -65,20 +51,7 @@ contract UpgradeableRegistry is
     // Schema UIDs
     bytes32 public kycSchemaUID;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(
-        address _eas,
-        bytes32 _kycSchemaUID,
-        address _feeReceiver
-    ) public initializer {
-        __AccessControl_init();
-        __Pausable_init();
-        __UUPSUpgradeable_init();
-
+    constructor(address _eas, bytes32 _kycSchemaUID, address _feeReceiver) {
         eas = IEAS(_eas);
         kycSchemaUID = _kycSchemaUID;
         feeReceiver = _feeReceiver;
@@ -93,7 +66,7 @@ contract UpgradeableRegistry is
      * @notice This function only emits an event and does not store the factory address on-chain.
      */
     function addFactory(
-        InaAccountFactory factoryAddress
+        CMAccountFactory factoryAddress
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
             address(factoryAddress) != address(0),
@@ -108,7 +81,7 @@ contract UpgradeableRegistry is
      * @notice This function only emits an event and does not remove any on-chain data.
      */
     function removeFactory(
-        InaAccountFactory factoryAddress
+        CMAccountFactory factoryAddress
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
             address(factoryAddress) != address(0),
@@ -124,7 +97,7 @@ contract UpgradeableRegistry is
      * @notice This function emits an event with both token and price feed addresses.
      */
     function addToken(
-        IERC20Upgradeable[] memory tokenAddresses,
+        IERC20[] memory tokenAddresses,
         AggregatorV3Interface[] memory priceFeedAddresses
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
@@ -155,7 +128,7 @@ contract UpgradeableRegistry is
      * @notice This function only emits an event and does not remove any on-chain data.
      */
     function removeToken(
-        IERC20Upgradeable[] memory tokenAddresses
+        IERC20[] memory tokenAddresses
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
             tokenAddresses.length > 0 &&
@@ -171,7 +144,7 @@ contract UpgradeableRegistry is
      * @notice This function only emits an event and does not store the pool addresses on-chain.
      */
     function addPool(
-        IERC20Upgradeable[] memory poolAddresses
+        IERC20[] memory poolAddresses
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
             poolAddresses.length > 0 && poolAddresses.length <= MAX_BATCH_SIZE,
@@ -186,7 +159,7 @@ contract UpgradeableRegistry is
      * @notice This function only emits an event and does not remove any on-chain data.
      */
     function removePool(
-        IERC20Upgradeable[] memory poolAddresses
+        IERC20[] memory poolAddresses
     ) external onlyRole(OPERATOR_ROLE) whenNotPaused {
         require(
             poolAddresses.length > 0 && poolAddresses.length <= MAX_BATCH_SIZE,
@@ -340,18 +313,4 @@ contract UpgradeableRegistry is
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
-
-    /**
-     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
-     * {upgradeTo} and {upgradeToAndCall}.
-     *
-     * Normally, this function will use an xref:access.adoc[access control] modifier such as {Ownable-onlyOwner}.
-     *
-     * ```solidity
-     * function _authorizeUpgrade(address) internal override onlyOwner {}
-     * ```
-     */
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

@@ -5,32 +5,25 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/IINARegistry.sol";
+import "./interfaces/ICMRegistry.sol";
 
 /**
- * @title InaPool
+ * @title CMPool
  * @dev ERC4626-compliant investment pool with EAS integration and custom investment logic.
  *
  * @notice This contract allows investors to deposit assets during a specified investment period,
  * integrates with the Ethereum Attestation Service (EAS) for KYC verification, and handles
  * thresholds, refunds, and repayments. Users cannot transfer their shares; they can only hold them.
  *
- * ██╗███╗   ██╗ █████╗     ██████╗  ██████╗  ██████╗ ██╗
- * ██║████╗  ██║██╔══██╗    ██╔══██╗██╔═══██╗██╔═══██╗██║
- * ██║██╔██╗ ██║███████║    ██████╔╝██║   ██║██║   ██║██║
- * ██║██║╚██╗██║██╔══██║    ██╔═══╝ ██║   ██║██║   ██║██║
- * ██║██║ ╚████║██║  ██║    ██║     ╚██████╔╝╚██████╔╝███████╗
- * ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝
- *
  * Investment Pool with EAS Integration
  */
-contract InaPool is ERC20, AccessControl, ReentrancyGuard {
+contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     // Events
 
     /**
      * @dev Emitted when the contract is deployed.
      */
-    event InaPoolCreated(
+    event CMPoolCreated(
         IERC20 indexed asset,
         string name,
         string symbol,
@@ -80,7 +73,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
     // Addresses
     IERC20 private immutable _asset;
     address public immutable creditFacilitator;
-    IINARegistry public immutable inaRegistry;
+    ICMRegistry public immutable cmRegistry;
 
     // Investment tracking
     mapping(address => uint256) public investments;
@@ -119,7 +112,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
      * @param pool Struct containing all other constructor parameters.
      */
     constructor(
-        IINARegistry inaRegistry_,
+        ICMRegistry cmRegistry_,
         IERC20 asset_,
         string memory name_,
         string memory symbol_,
@@ -134,13 +127,13 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
             "Invalid credit facilitator"
         );
         require(
-            address(inaRegistry_) != address(0),
-            "Invalid inaRegistry address"
+            address(cmRegistry_) != address(0),
+            "Invalid cmRegistry address"
         );
         require(pool.term > 0, "Term must be greater than zero");
 
         _asset = asset_;
-        inaRegistry = inaRegistry_;
+        cmRegistry = cmRegistry_;
         startTime = pool.startTime;
         endTime = pool.endTime;
         threshold = pool.threshold;
@@ -156,7 +149,7 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         _grantRole(ADMIN_ROLE, _msgSender());
 
         // Emit event with constructor parameters
-        emit InaPoolCreated(
+        emit CMPoolCreated(
             asset_,
             name_,
             symbol_,
@@ -328,8 +321,8 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 feeAmount = (totalFunds * feeBasisPoints) / 10000;
         uint256 facilitatorAmount = totalFunds - feeAmount;
 
-        // Transfer fee to InaAdmWallet
-        _asset.transfer(inaRegistry.feeReceiver(), feeAmount);
+        // Transfer fee to CMAdmWallet
+        _asset.transfer(cmRegistry.feeReceiver(), feeAmount);
 
         // Transfer remaining funds to credit facilitator
         _asset.transfer(creditFacilitator, facilitatorAmount);
@@ -398,11 +391,11 @@ contract InaPool is ERC20, AccessControl, ReentrancyGuard {
      * @param attestationUID UID of the attestation.
      */
     function _verifyAttestation(bytes32 attestationUID) internal view {
-        Attestation memory attestation = IEAS(inaRegistry.eas()).getAttestation(
+        Attestation memory attestation = IEAS(cmRegistry.eas()).getAttestation(
             attestationUID
         );
         require(
-            attestation.attester == address(inaRegistry),
+            attestation.attester == address(cmRegistry),
             "Invalid attester"
         );
         require(

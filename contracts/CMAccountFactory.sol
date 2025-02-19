@@ -7,9 +7,9 @@ import {BaseLightAccountFactory} from "light-account/common/BaseLightAccountFact
 import {LibClone} from "light-account/external/solady/LibClone.sol";
 import {MultiOwnerLightAccount} from "light-account/MultiOwnerLightAccount.sol";
 
-/// @title InaAccountFactory - A factory contract for MultiOwnerLightAccount.
+/// @title CMAccountFactory - A factory contract for MultiOwnerLightAccount.
 /// @dev This factory contract creates MultiOwnerLightAccount instances and emits an event when a new account is created.
-contract InaAccountFactory is BaseLightAccountFactory {
+contract CMAccountFactory is BaseLightAccountFactory {
     uint256 internal constant _MAX_OWNERS_ON_CREATION = 100;
     MultiOwnerLightAccount public immutable ACCOUNT_IMPLEMENTATION;
 

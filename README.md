@@ -1,6 +1,6 @@
-# Ina Contracts
+# CM Contracts
 
-This repository contains the smart contracts for the Ina project. It uses both Hardhat and Foundry for development and testing.
+This repository contains the smart contracts for the CM project. It uses both Hardhat and Foundry for development and testing.
 
 ## Prerequisites
 
@@ -12,8 +12,8 @@ This repository contains the smart contracts for the Ina project. It uses both H
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/INA-protocol/Ina-contracts.git
-cd Ina-contracts
+git clone https://github.com/credit-markets/contracts.git
+cd contracts
 ```
 
 2. Install dependencies:

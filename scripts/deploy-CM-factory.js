@@ -8,22 +8,22 @@ async function main() {
   // You'll need to replace this with the actual EntryPoint address for your network
   const entryPointAddress = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
 
-  const InaAccountFactory = await hre.ethers.getContractFactory(
-    "InaAccountFactory"
+  const CMAccountFactory = await hre.ethers.getContractFactory(
+    "CMAccountFactory"
   );
-  const inaAccountFactory = await InaAccountFactory.deploy(
+  const cmAccountFactory = await CMAccountFactory.deploy(
     deployer.address,
     entryPointAddress
   );
 
-  await inaAccountFactory.waitForDeployment();
+  await cmAccountFactory.waitForDeployment();
 
-  const deployedAddress = await inaAccountFactory.getAddress();
-  console.log("InaAccountFactory deployed to:", deployedAddress);
+  const deployedAddress = await cmAccountFactory.getAddress();
+  console.log("CMAccountFactory deployed to:", deployedAddress);
 
   // Wait for a few block confirmations to ensure the transaction is mined
   console.log("Waiting for a few confirmations...");
-  await inaAccountFactory.deploymentTransaction().wait(5);
+  await cmAccountFactory.deploymentTransaction().wait(5);
 
   // Verify the contract
   console.log("Verifying contract...");

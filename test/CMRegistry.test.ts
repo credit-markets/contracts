@@ -9,7 +9,7 @@ import { BytesLike } from "ethers";
 import {
   Registry,
   EAS,
-  InaAccountFactory,
+  CMAccountFactory,
   ERC20,
   EntryPoint,
   TestOracle2,
@@ -21,8 +21,8 @@ describe("Registry Contract", function () {
   let registry: Registry;
   let EAS: ContractFactory;
   let eas: EAS;
-  let InaAccountFactory: ContractFactory;
-  let inaAccountFactory: InaAccountFactory;
+  let CMAccountFactory: ContractFactory;
+  let cmAccountFactory: CMAccountFactory;
   let ERC20: ContractFactory;
   let token1: ERC20;
   let token2: ERC20;
@@ -82,13 +82,13 @@ describe("Registry Contract", function () {
     const deploymentEntrypoint = await EntryPointFactory.deploy();
     entryPoint = (await deploymentEntrypoint.waitForDeployment()) as any;
     entryPointAddress = await deploymentEntrypoint.getAddress();
-    // Deploy InaAccountFactory Mock
-    InaAccountFactory = await ethers.getContractFactory("InaAccountFactory");
-    inaAccountFactory = (await InaAccountFactory.deploy(
+    // Deploy CMAccountFactory Mock
+    CMAccountFactory = await ethers.getContractFactory("CMAccountFactory");
+    cmAccountFactory = (await CMAccountFactory.deploy(
       await owner.getAddress(),
       entryPointAddress
-    )) as unknown as InaAccountFactory;
-    await inaAccountFactory.waitForDeployment();
+    )) as unknown as CMAccountFactory;
+    await cmAccountFactory.waitForDeployment();
 
     // Deploy ERC20 Mock Tokens
     ERC20 = await ethers.getContractFactory("TestERC20");
@@ -188,12 +188,12 @@ describe("Registry Contract", function () {
         registry
           .connect(operator)
           .addFactory(
-            await (inaAccountFactory as unknown as Contract).getAddress()
+            await (cmAccountFactory as unknown as Contract).getAddress()
           )
       )
         .to.emit(registry, "FactoryAdded")
         .withArgs(
-          await (inaAccountFactory as unknown as Contract).getAddress()
+          await (cmAccountFactory as unknown as Contract).getAddress()
         );
     });
 
@@ -202,12 +202,12 @@ describe("Registry Contract", function () {
         registry
           .connect(operator)
           .removeFactory(
-            await (inaAccountFactory as unknown as Contract).getAddress()
+            await (cmAccountFactory as unknown as Contract).getAddress()
           )
       )
         .to.emit(registry, "FactoryRemoved")
         .withArgs(
-          await (inaAccountFactory as unknown as Contract).getAddress()
+          await (cmAccountFactory as unknown as Contract).getAddress()
         );
     });
 
@@ -217,7 +217,7 @@ describe("Registry Contract", function () {
         registry
           .connect(user1)
           .addFactory(
-            await (inaAccountFactory as unknown as Contract).getAddress()
+            await (cmAccountFactory as unknown as Contract).getAddress()
           )
       )
         .to.be.revertedWithCustomError(
@@ -230,7 +230,7 @@ describe("Registry Contract", function () {
         registry
           .connect(user1)
           .removeFactory(
-            await (inaAccountFactory as unknown as Contract).getAddress()
+            await (cmAccountFactory as unknown as Contract).getAddress()
           )
       )
         .to.be.revertedWithCustomError(
@@ -446,7 +446,7 @@ describe("Registry Contract", function () {
         registry
           .connect(operator)
           .addFactory(
-            await (inaAccountFactory as unknown as Contract).getAddress()
+            await (cmAccountFactory as unknown as Contract).getAddress()
           )
       ).to.be.revertedWithCustomError(registry, "EnforcedPause");
 

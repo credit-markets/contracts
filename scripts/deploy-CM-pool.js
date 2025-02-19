@@ -6,9 +6,9 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
 
   // You'll need to replace these with actual values
-  const inaRegistryAddress = "0xE4b24A53719c50f2a0d686cE3504A877c3A6690E"; // Address of the InaRegistry contract
+  const cmRegistryAddress = "0xE4b24A53719c50f2a0d686cE3504A877c3A6690E"; // Address of the CMRegistry contract
   const assetAddress = "0x0dec0488aeb6447a23b60fe416a5a133666bcd6e"; // Address of the ERC20 token used as the asset
-  const name = "Ina Pool Token";
+  const name = "CM Pool Token";
   const symbol = "IPT";
   const poolParams = {
     startTime: Math.floor(Date.now() / 1000) + 3600, // Start in 1 hour
@@ -22,23 +22,23 @@ async function main() {
     term: 120 * 24 * 60 * 60, // 120 days in seconds
   };
 
-  const InaPool = await hre.ethers.getContractFactory("InaPool");
-  const inaPool = await InaPool.deploy(
-    inaRegistryAddress,
+  const CMPool = await hre.ethers.getContractFactory("CMPool");
+  const cmPool = await CMPool.deploy(
+    cmRegistryAddress,
     assetAddress,
     name,
     symbol,
     poolParams
   );
 
-  await inaPool.waitForDeployment();
+  await cmPool.waitForDeployment();
 
-  const deployedAddress = await inaPool.getAddress();
-  console.log("InaPool deployed to:", deployedAddress);
+  const deployedAddress = await cmPool.getAddress();
+  console.log("CMPool deployed to:", deployedAddress);
 
   // Wait for a few block confirmations to ensure the transaction is mined
   console.log("Waiting for a few confirmations...");
-  await inaPool.deploymentTransaction().wait(5);
+  await cmPool.deploymentTransaction().wait(5);
 
   // Verify the contract
   console.log("Verifying contract...");
@@ -46,7 +46,7 @@ async function main() {
     await hre.run("verify:verify", {
       address: deployedAddress,
       constructorArguments: [
-        inaRegistryAddress,
+        cmRegistryAddress,
         assetAddress,
         name,
         symbol,
