@@ -7,4 +7,13 @@ interface ICMRegistry {
     function feeReceiver() external view returns (address);
 
     function eas() external view returns (IEAS);
+
+    // Add the CREDIT_FACILITATOR_ROLE constant
+    function CREDIT_FACILITATOR_ROLE() external view returns (bytes32);
+
+    // Add function to check if an account has a role
+    function hasRole(
+        bytes32 role,
+        address account
+    ) external view returns (bool);
 }

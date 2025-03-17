@@ -106,6 +106,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
 
     /**
      * @dev Constructor to initialize the investment pool.
+     * @param cmRegistry_ Credit Markets Registry Address.
      * @param asset_ The underlying asset (ERC20 token).
      * @param name_ Name of the ERC20 token.
      * @param symbol_ Symbol of the ERC20 token.
@@ -131,6 +132,15 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
             "Invalid cmRegistry address"
         );
         require(pool.term > 0, "Term must be greater than zero");
+
+        // Verify that the provided address has the CF role in the registry
+        require(
+            cmRegistry_.hasRole(
+                cmRegistry_.CREDIT_FACILITATOR_ROLE(),
+                pool.creditFacilitator
+            ),
+            "Address does not have Credit Facilitator role"
+        );
 
         _asset = asset_;
         cmRegistry = cmRegistry_;
