@@ -19,6 +19,8 @@ contract Registry is AccessControl, Pausable {
     // Roles
     bytes32 public constant ATTESTER_ROLE = keccak256("ATTESTER_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+    bytes32 public constant CREDIT_FACILITATOR_ROLE =
+        keccak256("CREDIT_FACILITATOR_ROLE");
 
     // Events
     event FactoryAdded(CMAccountFactory indexed factoryAddress);
@@ -237,7 +239,7 @@ contract Registry is AccessControl, Pausable {
     function grantAttesterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(ATTESTER_ROLE, account);
+        _grantRole(ATTESTER_ROLE, account);
     }
 
     /**
@@ -248,7 +250,29 @@ contract Registry is AccessControl, Pausable {
     function revokeAttesterRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(ATTESTER_ROLE, account);
+        _revokeRole(ATTESTER_ROLE, account);
+    }
+
+    /**
+     * @dev Grants the CREDIT_FACILITATOR_ROLE to an account.
+     * @param account The address to grant the role to.
+     * @notice Only the admin can call this function.
+     */
+    function grantCFRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(CREDIT_FACILITATOR_ROLE, account);
+    }
+
+    /**
+     * @dev Revokes the CREDIT_FACILITATOR_ROLE from an account.
+     * @param account The address to revoke the role from.
+     * @notice Only the admin can call this function.
+     */
+    function revokeCFRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(CREDIT_FACILITATOR_ROLE, account);
     }
 
     /**
@@ -259,7 +283,7 @@ contract Registry is AccessControl, Pausable {
     function grantOperatorRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(OPERATOR_ROLE, account);
+        _grantRole(OPERATOR_ROLE, account);
     }
 
     /**
@@ -270,7 +294,7 @@ contract Registry is AccessControl, Pausable {
     function revokeOperatorRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(OPERATOR_ROLE, account);
+        _revokeRole(OPERATOR_ROLE, account);
     }
 
     /**
