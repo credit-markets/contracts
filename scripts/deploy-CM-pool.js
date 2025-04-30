@@ -9,7 +9,7 @@ async function main() {
   const cmRegistryAddress = "0x28E33846999C579665df68aE032BE3b7f48B7538"; // Address of the CMRegistry contract
   const assetAddress = "0x0dec0488aeb6447a23b60fe416a5a133666bcd6e"; // Address of the ERC20 token used as the asset
   const name = "CM Pool Token";
-  const symbol = "IPT";
+  const symbol = "CMPT";
   const poolParams = {
     startTime: Math.floor(Date.now() / 1000) + 3600, // Start in 1 hour
     endTime: Math.floor(Date.now() / 1000) + 172800, // End in 2 days
