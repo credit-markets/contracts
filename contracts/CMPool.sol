@@ -136,10 +136,10 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         // Verify that the provided address has the CF role in the registry
         require(
             cmRegistry_.hasRole(
-                cmRegistry_.CREDIT_FACILITATOR_ROLE(),
+                cmRegistry_.OPERATOR_ROLE(),
                 pool.creditFacilitator
             ),
-            "Address does not have Credit Facilitator role"
+            "Address does not have Operator role"
         );
 
         _asset = asset_;
