@@ -395,6 +395,33 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         return amount;
     }
 
+    /**
+     * @dev Add a new admin.
+     * @param account Address to grant admin role to.
+     */
+    function addAdmin(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(account != address(0), "Invalid address");
+        grantRole(ADMIN_ROLE, account);
+    }
+
+    /**
+     * @dev Remove an admin.
+     * @param account Address to revoke admin role from.
+     */
+    function removeAdmin(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(account != address(0), "Invalid address");
+        revokeRole(ADMIN_ROLE, account);
+    }
+
+    /**
+     * @dev Check if an address is an admin.
+     * @param account Address to check.
+     * @return bool True if the address has admin role, false otherwise.
+     */
+    function isAdmin(address account) public view returns (bool) {
+        return hasRole(ADMIN_ROLE, account);
+    }
+
     // Internal Functions
 
     /**
