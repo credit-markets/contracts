@@ -16,13 +16,4 @@ interface ICMRegistry {
         bytes32 role,
         address account
     ) external view returns (bool);
-    
-    // Add attestation related functions
-    function attestationUIDs(address user) external view returns (bytes32);
-    
-    function verifyAttestation(
-        bytes32 attestationUID,
-        address user,
-        uint256 kycLevel
-    ) external view returns (bool);
 }

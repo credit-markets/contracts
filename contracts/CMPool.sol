@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/ICMRegistry.sol";
-import "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
 
 /**
  * @title CMPool
