@@ -39,9 +39,10 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     );
 
     /**
-     * @dev Emitted when funds are taken by the credit facilitator.
+     * @dev Emitted when funds are taken by admin.
      */
-    event FundsTaken(address indexed creditFacilitator, uint256 amount);
+    event FundsTaken(address indexed admin, uint256 amount);
+
 
     /**
      * @dev Emitted when repayment is made by the credit facilitator.
@@ -69,6 +70,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
 
     // Term for repayment
     uint256 public immutable term;
+
 
     // Addresses
     IERC20 private immutable _asset;
@@ -153,6 +155,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         creditFacilitator = pool.creditFacilitator;
         kycLevel = pool.kycLevel;
         term = pool.term;
+        
 
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -312,33 +315,31 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Function for the credit facilitator to take funds after the investment period.
+     * @dev Function for admin to take funds.
+     * Funds remain in the contract.
      */
-    function takeFunds() external nonReentrant {
-        require(
-            _msgSender() == creditFacilitator,
-            "Caller is not the credit facilitator"
-        );
+    function takeFunds() external nonReentrant onlyRole(ADMIN_ROLE) {
         require(block.timestamp > endTime, "Investment period not yet ended");
         require(totalAssets() >= threshold, "Threshold not met");
         require(!fundsTaken, "Funds already taken");
         require(!refunded, "Funds have been refunded");
+        
         fundsTaken = true;
 
         uint256 totalFunds = totalAssets();
 
         // Calculate fee
         uint256 feeAmount = (totalFunds * feeBasisPoints) / 10000;
-        uint256 facilitatorAmount = totalFunds - feeAmount;
 
         // Transfer fee to CMAdmWallet
         _asset.transfer(cmRegistry.feeReceiver(), feeAmount);
 
-        // Transfer remaining funds to credit facilitator
-        _asset.transfer(creditFacilitator, facilitatorAmount);
+        // Remaining funds stay in the contract
+        uint256 remainingAmount = totalFunds - feeAmount;
 
-        emit FundsTaken(creditFacilitator, facilitatorAmount);
+        emit FundsTaken(_msgSender(), remainingAmount);
     }
+
 
     /**
      * @dev Function for the credit facilitator to repay after the term.
@@ -392,6 +393,33 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
             estimatedReturnBasisPoints) / 10000;
         amount = totalInvested + estimatedReturnAmount;
         return amount;
+    }
+
+    /**
+     * @dev Add a new admin.
+     * @param account Address to grant admin role to.
+     */
+    function addAdmin(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(account != address(0), "Invalid address");
+        grantRole(ADMIN_ROLE, account);
+    }
+
+    /**
+     * @dev Remove an admin.
+     * @param account Address to revoke admin role from.
+     */
+    function removeAdmin(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(account != address(0), "Invalid address");
+        revokeRole(ADMIN_ROLE, account);
+    }
+
+    /**
+     * @dev Check if an address is an admin.
+     * @param account Address to check.
+     * @return bool True if the address has admin role, false otherwise.
+     */
+    function isAdmin(address account) public view returns (bool) {
+        return hasRole(ADMIN_ROLE, account);
     }
 
     // Internal Functions
