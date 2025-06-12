@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/ICMRegistry.sol";
+import "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
 
 /**
  * @title CMPool
@@ -15,7 +16,7 @@ import "./interfaces/ICMRegistry.sol";
  * integrates with the Ethereum Attestation Service (EAS) for KYC verification, and handles
  * thresholds, refunds, and repayments. Users cannot transfer their shares; they can only hold them.
  *
- * Investment Pool with EAS Integration and Admin Approval System
+ * Investment Pool with EAS Integration
  */
 contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     // Events
@@ -39,19 +40,10 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     );
 
     /**
-     * @dev Emitted when the pool is approved by admin.
-     */
-    event PoolApproved(address indexed admin, uint256 timestamp);
-
-    /**
      * @dev Emitted when funds are taken by admin.
      */
     event FundsTaken(address indexed admin, uint256 amount);
 
-    /**
-     * @dev Emitted when admin withdraws funds.
-     */
-    event AdminWithdrawal(address indexed admin, uint256 amount, uint256 timestamp);
 
     /**
      * @dev Emitted when repayment is made by the credit facilitator.
@@ -80,6 +72,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     // Term for repayment
     uint256 public immutable term;
 
+
     // Addresses
     IERC20 private immutable _asset;
     address public immutable creditFacilitator;
@@ -91,14 +84,12 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     mapping(address => bool) private isInvestor;
 
     // Flags and totals
-    bool public approved; // New: Pool approval status
     bool public fundsTaken;
     bool public repaid;
     bool public refunded;
     uint256 public totalInvested;
     uint256 public repaymentAmount;
     uint256 public immutable kycLevel;
-    uint256 public lockupStartTime; // New: When lock-up period starts
 
     // Roles
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -166,9 +157,6 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         kycLevel = pool.kycLevel;
         term = pool.term;
         
-        // Initialize approval status as false
-        approved = false;
-        lockupStartTime = 0;
 
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -199,27 +187,6 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     modifier transfersNotAllowed() {
         revert("Share transfers are not allowed");
         _;
-    }
-
-    /**
-     * @dev Modifier to check if pool is approved.
-     */
-    modifier onlyApproved() {
-        require(approved, "Pool must be approved by admin");
-        _;
-    }
-
-    // Admin Functions
-
-    /**
-     * @dev Function for admin to approve the pool.
-     */
-    function approvePool() external onlyRole(ADMIN_ROLE) {
-        require(!approved, "Pool already approved");
-        require(block.timestamp <= endTime, "Investment period has ended");
-        
-        approved = true;
-        emit PoolApproved(_msgSender(), block.timestamp);
     }
 
     // ERC4626 Required Functions Implementation
@@ -261,7 +228,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     function deposit(
         uint256 assets,
         bytes32 attestationUID
-    ) public nonReentrant onlyApproved returns (uint256 shares) {
+    ) public nonReentrant returns (uint256 shares) {
         require(
             block.timestamp >= startTime && block.timestamp <= endTime,
             "Investment period is closed"
@@ -349,49 +316,31 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Function for admin to take funds and start lock-up period.
-     * This replaces the old CF takeFunds functionality.
+     * @dev Function for admin to take funds.
+     * Funds remain in the contract.
      */
-    function takeFunds() external nonReentrant onlyRole(ADMIN_ROLE) onlyApproved {
+    function takeFunds() external nonReentrant onlyRole(ADMIN_ROLE) {
         require(block.timestamp > endTime, "Investment period not yet ended");
         require(totalAssets() >= threshold, "Threshold not met");
         require(!fundsTaken, "Funds already taken");
         require(!refunded, "Funds have been refunded");
         
         fundsTaken = true;
-        lockupStartTime = block.timestamp; // Start lock-up period
 
         uint256 totalFunds = totalAssets();
 
         // Calculate fee
         uint256 feeAmount = (totalFunds * feeBasisPoints) / 10000;
-        uint256 facilitatorAmount = totalFunds - feeAmount;
 
         // Transfer fee to CMAdmWallet
         _asset.transfer(cmRegistry.feeReceiver(), feeAmount);
 
-        // Transfer remaining funds to credit facilitator
-        _asset.transfer(creditFacilitator, facilitatorAmount);
+        // Remaining funds stay in the contract
+        uint256 remainingAmount = totalFunds - feeAmount;
 
-        emit FundsTaken(_msgSender(), facilitatorAmount);
+        emit FundsTaken(_msgSender(), remainingAmount);
     }
 
-    /**
-     * @dev Function for admin to withdraw funds during lock-up period.
-     */
-    function adminWithdraw(uint256 amount) external nonReentrant onlyRole(ADMIN_ROLE) {
-        require(fundsTaken, "Funds not yet taken");
-        require(lockupStartTime > 0, "Lock-up period not started");
-        require(amount > 0, "Amount must be greater than zero");
-        
-        uint256 contractBalance = totalAssets();
-        require(amount <= contractBalance, "Insufficient contract balance");
-
-        // Transfer funds to admin
-        _asset.transfer(_msgSender(), amount);
-
-        emit AdminWithdrawal(_msgSender(), amount, block.timestamp);
-    }
 
     /**
      * @dev Function for the credit facilitator to repay after the term.
