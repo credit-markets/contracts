@@ -37,6 +37,10 @@
     "typescript": "^5.5.4"
   },
   "scripts": {
-    "typechain": "find artifacts/@account-abstraction/contracts/core -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 find artifacts/contracts/SimplePaymaster.sol -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 typechain --target ethers-v6 --out-dir typechain --show-stack-traces"
-  }
+    "typechain": "find artifacts/@account-abstraction/contracts/core -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 find artifacts/contracts/SimplePaymaster.sol -name '*.json' ! -name '*.dbg.json' -print0 | xargs -0 typechain --target ethers-v6 --out-dir typechain --show-stack-traces",
+    "deploy-registry": "hardhat run scripts/deploy-registry.js --network arbitrumSepolia",
+    "deploy-factory": "hardhat run scripts/deploy-CM-factory.js --network arbitrumSepolia",
+    "deploy-pool": "hardhat run scripts/deploy-CM-pool.js --network arbitrumSepolia"
+  },
+  "packageManager": "pnpm@10.8.0+sha1.ae60ea225bbd6b1f51cd17e91b40431c8b12a052"
 }
