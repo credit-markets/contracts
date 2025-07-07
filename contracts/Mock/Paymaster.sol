@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@account-abstraction/contracts/core/BasePaymaster.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {BasePaymaster} from "@account-abstraction/contracts/core/BasePaymaster.sol";
+
+import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
+import {IEntryPoint, PackedUserOperation} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract Paymaster is BasePaymaster {
     constructor(address _entryPoint) BasePaymaster(IEntryPoint(_entryPoint)) {}
@@ -31,7 +32,7 @@ contract Paymaster is BasePaymaster {
     }
 
     function _postOp(
-        PostOpMode mode,
+        BasePaymaster.PostOpMode mode,
         bytes calldata context,
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas

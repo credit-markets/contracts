@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@account-abstraction/contracts/core/BasePaymaster.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {BasePaymaster} from "@account-abstraction/contracts/core/BasePaymaster.sol";
+import {IEntryPoint, PackedUserOperation} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract SimplePaymaster is BasePaymaster {
     constructor(address _entryPoint) BasePaymaster(IEntryPoint(_entryPoint)) {}
 
     function _validatePaymasterUserOp(
-        PackedUserOperation calldata userOp,
-        bytes32 requestId,
-        uint256 maxCost
-    ) internal view override returns (bytes memory context, uint256 preOpGas) {
+        PackedUserOperation calldata,
+        bytes32,
+        uint256
+    ) internal pure override returns (bytes memory context, uint256 preOpGas) {
         // Custom logic to validate the UserOperation
         // This example simply approves all operations
         context = new bytes(0);
@@ -19,7 +19,7 @@ contract SimplePaymaster is BasePaymaster {
     }
 
     function _postOp(
-        PostOpMode mode,
+        BasePaymaster.PostOpMode mode,
         bytes calldata context,
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas

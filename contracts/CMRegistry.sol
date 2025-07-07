@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./CMAccountFactory.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
+import {CMAccountFactory} from "./CMAccountFactory.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {IEAS, Attestation, AttestationRequest, AttestationRequestData, RevocationRequest, RevocationRequestData} from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
 
 /**
- * @title Registry
+ * @title CMRegistry
  * @dev This contract manages factories, tokens, pools, and interacts with EAS for attestations in the CM Protocol.
  *
  * @notice This contract emits events for adding and removing factories, tokens, and pools.
  * It also integrates with the Ethereum Attestation Service (EAS) for managing attestations.
  */
-contract Registry is AccessControl, Pausable {
+contract CMRegistry is AccessControl, Pausable {
     // Roles
     bytes32 public constant ATTESTER_ROLE = keccak256("ATTESTER_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -32,30 +32,30 @@ contract Registry is AccessControl, Pausable {
     event TokenRemoved(IERC20[] tokenAddresses);
     event PoolAdded(IERC20[] poolAddresses);
     event PoolRemoved(IERC20[] poolAddresses);
-    event KYCAttested(
+    event KycAttested(
         address indexed smartWallet,
         uint256 kycId,
         uint256 kycLevel,
-        bytes32 attestationUID
+        bytes32 attestationUid
     );
-    event KYCRevoked(address indexed smartWallet, bytes32 attestationUID);
+    event KycRevoked(address indexed smartWallet, bytes32 attestationUid);
 
     // Constants
     uint256 public constant VERSION = 1;
     uint256 public constant MAX_BATCH_SIZE = 100;
 
     // EAS contract
-    IEAS public immutable eas;
+    IEAS public immutable EAS;
 
     // Fee Receiver wallet
     address public feeReceiver;
 
     // Schema UIDs
-    bytes32 public kycSchemaUID;
+    bytes32 public kycSchemaUid;
 
-    constructor(address _eas, bytes32 _kycSchemaUID, address _feeReceiver) {
-        eas = IEAS(_eas);
-        kycSchemaUID = _kycSchemaUID;
+    constructor(address _eas, bytes32 _kycSchemaUid, address _feeReceiver) {
+        EAS = IEAS(_eas);
+        kycSchemaUid = _kycSchemaUid;
         feeReceiver = _feeReceiver;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(ATTESTER_ROLE, _msgSender());
@@ -177,14 +177,14 @@ contract Registry is AccessControl, Pausable {
      * @param smartWallet User's Smart Wallet address.
      * @notice Only accounts with the ATTESTER_ROLE can call this function.
      */
-    function attestKYC(
+    function attestKyc(
         uint256 kycId,
         uint256 kycLevel,
         address smartWallet
     ) external onlyRole(ATTESTER_ROLE) whenNotPaused {
         require(kycLevel > 0, "Invalid KYC level");
         require(smartWallet != address(0), "Invalid smart wallet address");
-        require(kycSchemaUID != bytes32(0), "KYC schema not set");
+        require(kycSchemaUid != bytes32(0), "KYC schema not set");
 
         AttestationRequestData memory data = AttestationRequestData({
             recipient: smartWallet,
@@ -196,14 +196,14 @@ contract Registry is AccessControl, Pausable {
         });
 
         AttestationRequest memory request = AttestationRequest({
-            schema: kycSchemaUID,
+            schema: kycSchemaUid,
             data: data
         });
 
-        bytes32 attestationUID = eas.attest(request);
+        bytes32 attestationUid = EAS.attest(request);
 
-        // Emit the KYCAttested event
-        emit KYCAttested(smartWallet, kycId, kycLevel, attestationUID);
+        // Emit the KycAttested event
+        emit KycAttested(smartWallet, kycId, kycLevel, attestationUid);
     }
 
     /**
@@ -211,24 +211,24 @@ contract Registry is AccessControl, Pausable {
      * @param uid The UID of the attestation to revoke.
      * @notice Only accounts with the ATTESTER_ROLE can call this function.
      */
-    function revokeKYC(
+    function revokeKyc(
         bytes32 uid
     ) external onlyRole(ATTESTER_ROLE) whenNotPaused {
         require(uid != bytes32(0), "Invalid attestation UID");
 
         // Get the attestation data before revoking
-        Attestation memory attestation = eas.getAttestation(uid);
+        Attestation memory attestation = EAS.getAttestation(uid);
         require(attestation.uid == uid, "Attestation does not exist");
 
-        eas.revoke(
+        EAS.revoke(
             RevocationRequest({
-                schema: kycSchemaUID,
+                schema: kycSchemaUid,
                 data: RevocationRequestData({uid: uid, value: 0})
             })
         );
 
-        // Emit the KYCRevoked event
-        emit KYCRevoked(attestation.recipient, uid);
+        // Emit the KycRevoked event
+        emit KycRevoked(attestation.recipient, uid);
     }
 
     /**
@@ -258,7 +258,7 @@ contract Registry is AccessControl, Pausable {
      * @param account The address to grant the role to.
      * @notice Only the admin can call this function.
      */
-    function grantCFRole(
+    function grantCfRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(CREDIT_FACILITATOR_ROLE, account);
@@ -269,7 +269,7 @@ contract Registry is AccessControl, Pausable {
      * @param account The address to revoke the role from.
      * @notice Only the admin can call this function.
      */
-    function revokeCFRole(
+    function revokeCfRole(
         address account
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(CREDIT_FACILITATOR_ROLE, account);
@@ -299,12 +299,12 @@ contract Registry is AccessControl, Pausable {
 
     /**
      * @dev Sets the KYC schema UID.
-     * @param _kycSchemaUID The UID of the KYC schema in EAS.
+     * @param _kycSchemaUid The UID of the KYC schema in EAS.
      */
-    function setKYCSchemaUID(
-        bytes32 _kycSchemaUID
+    function setKycSchemaUid(
+        bytes32 _kycSchemaUid
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        kycSchemaUID = _kycSchemaUID;
+        kycSchemaUid = _kycSchemaUid;
     }
 
     /**
