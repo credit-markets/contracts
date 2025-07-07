@@ -2,10 +2,13 @@
 pragma solidity ^0.8.0;
 
 // Import OpenZeppelin Contracts
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/ICMRegistry.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICMRegistry} from "./interfaces/ICMRegistry.sol";
+import {IEAS, Attestation} from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
 
 /**
  * @title CMPool
@@ -18,6 +21,8 @@ import "./interfaces/ICMRegistry.sol";
  * Investment Pool with EAS Integration
  */
 contract CMPool is ERC20, AccessControl, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     // Events
 
     /**
@@ -56,24 +61,24 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     // State Variables
 
     // Investment period variables
-    uint256 public immutable startTime;
-    uint256 public immutable endTime;
+    uint256 public immutable START_TIME;
+    uint256 public immutable END_TIME;
 
     // Threshold and maximum raise amounts
-    uint256 public immutable threshold;
-    uint256 public immutable amountToRaise;
+    uint256 public immutable THRESHOLD;
+    uint256 public immutable AMOUNT_TO_RAISE;
 
     // Fee and estimated return (stored as basis points)
-    uint256 public immutable feeBasisPoints;
-    uint256 public immutable estimatedReturnBasisPoints;
+    uint256 public immutable FEE_BASIS_POINTS;
+    uint256 public immutable ESTIMATED_RETURN_BASIS_POINTS;
 
     // Term for repayment
-    uint256 public immutable term;
+    uint256 public immutable TERM;
 
     // Addresses
-    IERC20 private immutable _asset;
-    address public immutable creditFacilitator;
-    ICMRegistry public immutable cmRegistry;
+    IERC20 private immutable _ASSET;
+    address public immutable CREDIT_FACILITATOR;
+    ICMRegistry public immutable CM_REGISTRY;
 
     // Investment tracking
     mapping(address => uint256) public investments;
@@ -86,7 +91,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     bool public refunded;
     uint256 public totalInvested;
     uint256 public repaymentAmount;
-    uint256 public immutable kycLevel;
+    uint256 public immutable KYC_LEVEL;
 
     // Roles
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -142,17 +147,17 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
             "Address does not have Operator role"
         );
 
-        _asset = asset_;
-        cmRegistry = cmRegistry_;
-        startTime = pool.startTime;
-        endTime = pool.endTime;
-        threshold = pool.threshold;
-        amountToRaise = pool.amountToRaise;
-        feeBasisPoints = pool.feeBasisPoints;
-        estimatedReturnBasisPoints = pool.estimatedReturnBasisPoints;
-        creditFacilitator = pool.creditFacilitator;
-        kycLevel = pool.kycLevel;
-        term = pool.term;
+        _ASSET = asset_;
+        CM_REGISTRY = cmRegistry_;
+        START_TIME = pool.startTime;
+        END_TIME = pool.endTime;
+        THRESHOLD = pool.threshold;
+        AMOUNT_TO_RAISE = pool.amountToRaise;
+        FEE_BASIS_POINTS = pool.feeBasisPoints;
+        ESTIMATED_RETURN_BASIS_POINTS = pool.estimatedReturnBasisPoints;
+        CREDIT_FACILITATOR = pool.creditFacilitator;
+        KYC_LEVEL = pool.kycLevel;
+        TERM = pool.term;
 
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -192,7 +197,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      * @return The asset address.
      */
     function asset() public view returns (address) {
-        return address(_asset);
+        return address(_ASSET);
     }
 
     /**
@@ -200,7 +205,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      * @return The total assets.
      */
     function totalAssets() public view returns (uint256) {
-        return _asset.balanceOf(address(this));
+        return _ASSET.balanceOf(address(this));
     }
 
     /**
@@ -218,31 +223,31 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
     /**
      * @dev Allows an investor to deposit assets and receive shares.
      * @param assets Amount of assets to deposit.
-     * @param attestationUID UID of the attestation.
+     * @param attestationUid UID of the attestation.
      * @return shares Amount of shares minted.
      */
     function deposit(
         uint256 assets,
-        bytes32 attestationUID
+        bytes32 attestationUid
     ) public nonReentrant returns (uint256 shares) {
         require(
-            block.timestamp >= startTime && block.timestamp <= endTime,
+            block.timestamp >= START_TIME && block.timestamp <= END_TIME,
             "Investment period is closed"
         );
         require(
-            totalAssets() + assets <= amountToRaise,
+            totalAssets() + assets <= AMOUNT_TO_RAISE,
             "Investment exceeds amount to raise"
         );
 
         // Verify attestation
-        _verifyAttestation(attestationUID);
+        _verifyAttestation(attestationUid);
 
         // Calculate shares to mint
         shares = convertToShares(assets);
         require(shares > 0, "Zero shares");
 
         // Transfer assets from sender
-        _asset.transferFrom(_msgSender(), address(this), assets);
+        _ASSET.safeTransferFrom(_msgSender(), address(this), assets);
 
         // Mint shares to receiver
         _mint(_msgSender(), shares);
@@ -282,9 +287,9 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      * @dev Function to refund all investors if threshold is not met.
      */
     function refund() external nonReentrant {
-        require(block.timestamp > endTime, "Investment period not yet ended");
+        require(block.timestamp > END_TIME, "Investment period not yet ended");
         require(
-            totalAssets() < threshold,
+            totalAssets() < THRESHOLD,
             "Threshold met, refund not possible"
         );
         require(!refunded, "Already refunded");
@@ -304,7 +309,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
                 _burn(investor, investorShares);
 
                 // Transfer assets back to investor
-                _asset.transfer(investor, investedAmount);
+                _ASSET.safeTransfer(investor, investedAmount);
 
                 emit Refunded(investor, investedAmount);
             }
@@ -316,11 +321,11 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      */
     function takeFunds() external nonReentrant {
         require(
-            _msgSender() == creditFacilitator,
+            _msgSender() == CREDIT_FACILITATOR,
             "Caller is not the credit facilitator"
         );
-        require(block.timestamp > endTime, "Investment period not yet ended");
-        require(totalAssets() >= threshold, "Threshold not met");
+        require(block.timestamp > END_TIME, "Investment period not yet ended");
+        require(totalAssets() >= THRESHOLD, "Threshold not met");
         require(!fundsTaken, "Funds already taken");
         require(!refunded, "Funds have been refunded");
         fundsTaken = true;
@@ -328,16 +333,16 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         uint256 totalFunds = totalAssets();
 
         // Calculate fee
-        uint256 feeAmount = (totalFunds * feeBasisPoints) / 10000;
+        uint256 feeAmount = (totalFunds * FEE_BASIS_POINTS) / 10000;
         uint256 facilitatorAmount = totalFunds - feeAmount;
 
         // Transfer fee to CMAdmWallet
-        _asset.transfer(cmRegistry.feeReceiver(), feeAmount);
+        _ASSET.safeTransfer(CM_REGISTRY.feeReceiver(), feeAmount);
 
         // Transfer remaining funds to credit facilitator
-        _asset.transfer(creditFacilitator, facilitatorAmount);
+        _ASSET.safeTransfer(CREDIT_FACILITATOR, facilitatorAmount);
 
-        emit FundsTaken(creditFacilitator, facilitatorAmount);
+        emit FundsTaken(CREDIT_FACILITATOR, facilitatorAmount);
     }
 
     /**
@@ -345,11 +350,11 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      */
     function repay() external nonReentrant {
         require(
-            _msgSender() == creditFacilitator,
+            _msgSender() == CREDIT_FACILITATOR,
             "Caller is not the credit facilitator"
         );
         require(
-            block.timestamp > endTime + term,
+            block.timestamp > END_TIME + TERM,
             "Repayment period not yet started"
         );
         require(fundsTaken, "Funds not yet taken");
@@ -359,7 +364,11 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
         repaymentAmount = calculateRepaymentAmount();
 
         // Transfer repayment amount from credit facilitator to contract
-        _asset.transferFrom(creditFacilitator, address(this), repaymentAmount);
+        _ASSET.safeTransferFrom(
+            CREDIT_FACILITATOR,
+            address(this),
+            repaymentAmount
+        );
 
         // Distribute repayment proportionally and burn investor tokens
         uint256 totalSupplyTokens = totalSupply();
@@ -376,7 +385,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
                 _burn(investor, investorBalance);
 
                 // Transfer share of repayment
-                _asset.transfer(investor, share);
+                _ASSET.safeTransfer(investor, share);
             }
         }
 
@@ -389,7 +398,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
      */
     function calculateRepaymentAmount() public view returns (uint256 amount) {
         uint256 estimatedReturnAmount = (totalInvested *
-            estimatedReturnBasisPoints) / 10000;
+            ESTIMATED_RETURN_BASIS_POINTS) / 10000;
         amount = totalInvested + estimatedReturnAmount;
         return amount;
     }
@@ -398,14 +407,14 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
 
     /**
      * @dev Internal function to verify attestation using EAS.
-     * @param attestationUID UID of the attestation.
+     * @param attestationUid UID of the attestation.
      */
-    function _verifyAttestation(bytes32 attestationUID) internal view {
-        Attestation memory attestation = IEAS(cmRegistry.eas()).getAttestation(
-            attestationUID
+    function _verifyAttestation(bytes32 attestationUid) internal view {
+        Attestation memory attestation = IEAS(CM_REGISTRY.eas()).getAttestation(
+            attestationUid
         );
         require(
-            attestation.attester == address(cmRegistry),
+            attestation.attester == address(CM_REGISTRY),
             "Invalid attester"
         );
         require(
@@ -419,7 +428,7 @@ contract CMPool is ERC20, AccessControl, ReentrancyGuard {
             (uint256, uint256, address)
         );
 
-        require(kyc >= kycLevel, "Invalid KYC level");
+        require(kyc >= KYC_LEVEL, "Invalid KYC level");
         require(
             smartWallet == _msgSender(),
             "Attestation does not match sender"

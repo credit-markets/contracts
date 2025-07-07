@@ -111,7 +111,12 @@ contract CMAccountFactory is BaseLightAccountFactory {
         address[] memory owners,
         uint256 salt
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(owners, salt));
+        bytes32 result;
+        bytes memory encoded = abi.encode(owners, salt);
+        assembly {
+            result := keccak256(add(encoded, 0x20), mload(encoded))
+        }
+        return result;
     }
 
     /// @dev `owners` must be in strictly ascending order and not include the 0 address. The ordering requirement
