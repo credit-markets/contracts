@@ -8,8 +8,8 @@ interface ICMRegistry {
 
     function eas() external view returns (IEAS);
 
-    // Add the CREDIT_FACILITATOR_ROLE constant
-    function CREDIT_FACILITATOR_ROLE() external view returns (bytes32);
+    // Add the OPERATOR_ROLE constant
+    function OPERATOR_ROLE() external view returns (bytes32);
 
     // Add function to check if an account has a role
     function hasRole(
